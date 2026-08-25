@@ -4,9 +4,12 @@ import tempfile
 import urllib.parse
 from flask import Flask, render_template_string, request, jsonify
 from PyPDF2 import PdfReader
-import win32api
-import win32print
-
+try:
+    import win32api
+    import win32print
+except ImportError:
+    win32api = None
+    win32print = None
 app = Flask(__name__)
 
 YOUR_UPI_ID = "9324557708@ptyes"
