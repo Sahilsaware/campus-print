@@ -1,8 +1,6 @@
 import os
-import socket
 import tempfile
 import urllib.parse
-import razorpay
 from flask import Flask, render_template_string, request, jsonify
 from PyPDF2 import PdfReader
 
@@ -15,10 +13,6 @@ except ImportError:
 
 app = Flask(__name__)
 
-RAZORPAY_KEY_ID = "rzp_test_TURAyEBXgKmNLg" 
-RAZORPAY_KEY_SECRET = "xVmhu8l2YKP0zWJ9AWjXvH5x"
-client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
-
 YOUR_UPI_ID = "9324557708@ptyes"
 YOUR_NAME = "CampusPrint Kiosk"
 TARGET_PRINTER = None  
@@ -27,7 +21,6 @@ KIOSK_HTML = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CampusPrint Kiosk Machine</title>
@@ -54,7 +47,7 @@ KIOSK_HTML = """
 
         .upload-area { border: 2px dashed #475569; padding: 25px; border-radius: 16px; margin: 15px 0; cursor: pointer; background: #0f172a; display: block; }
         .price-summary { background: #0f172a; padding: 15px; border-radius: 12px; text-align: left; margin: 15px 0; }
-        .qr-img { background: white; padding: 10px; border-radius: 12px; width: 180px; height: 180px; }
+        .qr-img { background: white; padding: 10px; border-radius: 12px; width: 200px; height: 200px; margin: 10px auto; }
         .file-item { background: #334155; padding: 8px 12px; border-radius: 6px; font-size: 12px; margin-bottom: 5px; text-align: left; }
     </style>
 </head>
@@ -69,7 +62,7 @@ KIOSK_HTML = """
             <button class="big-btn" onclick="goToStep(2)">+ START PRINTING</button>
         </div>
 
-        <!-- STEP 2: PRINT OPTIONS & CONFIG -->
+        <!-- STEP 2: PRINT OPTIONS -->
         <div class="step-container" id="step2">
             <div class="nav-header">
                 <button class="back-btn" onclick="goToStep(1)">← Back</button>
@@ -96,25 +89,19 @@ KIOSK_HTML = """
                 </select>
             </div>
 
-            <div style="display: flex; gap: 10px;">
-                <div class="setting-group" style="flex:1;">
-                    <label>Copies (Quantity):</label>
-                    <input type="number" id="copyCount" value="1" min="1" onchange="calculateTotal()">
-                </div>
-                <div class="setting-group" style="flex:1;">
-                    <label>Page Range:</label>
-                    <input type="text" id="pageRange" placeholder="e.g. All or 1-5" onchange="calculateTotal()">
-                </div>
+            <div class="setting-group">
+                <label>Copies (Quantity):</label>
+                <input type="number" id="copyCount" value="1" min="1" onchange="calculateTotal()">
             </div>
 
             <button class="big-btn" onclick="goToStep(3)">Next: Select Files ➔</button>
         </div>
 
-        <!-- STEP 3: MULTIPLE FILE UPLOAD -->
+        <!-- STEP 3: UPLOAD & PAGE SELECTION -->
         <div class="step-container" id="step3">
             <div class="nav-header">
                 <button class="back-btn" onclick="goToStep(2)">⬅ Back</button>
-                <h3 style="margin:0;">Upload Documents</h3>
+                <h3 style="margin:0;">Upload & Range</h3>
                 <div></div>
             </div>
 
@@ -126,18 +113,40 @@ KIOSK_HTML = """
             
             <div id="fileListContainer"></div>
 
+            <div class="setting-group" id="pageRangeBox" style="display:none;">
+                <label>Page Range (e.g. 1-5, 2, 4 or Leave blank for All):</label>
+                <input type="text" id="pageRange" placeholder="All pages" oninput="calculateTotal()">
+            </div>
+
             <div class="price-summary" id="priceSummaryBox" style="display:none;">
-                <p style="margin:4px 0;">Total Files: <strong id="totalFilesText">0</strong></p>
-                <p style="margin:4px 0;">Total Pages calculated: <strong id="totalPagesText">0</strong></p>
+                <p style="margin:4px 0;">Total Document Pages: <strong id="docPagesText">0</strong></p>
+                <p style="margin:4px 0;">Selected Pages to Print: <strong id="totalPagesText">0</strong></p>
                 <p style="margin:4px 0;">Copies: <strong id="copiesSummaryText">1</strong></p>
                 <hr style="border-color:#334155;">
                 <p style="margin:4px 0; font-size: 18px; color:#22c55e;">Total Amount: <strong>₹<span id="finalAmountText">0</span></strong></p>
             </div>
 
-            <button class="big-btn" id="proceedToPayBtn" style="display:none;" onclick="payAndPrint()">Proceed to Pay & Print ➔</button>
+            <button class="big-btn" id="proceedToPayBtn" style="display:none;" onclick="generatePayment()">Scan & Pay ➔</button>
         </div>
 
-        <!-- STEP 4: SUCCESS -->
+        <!-- STEP 4: SCANNER SCREEN -->
+        <div class="step-container" id="step4">
+            <div class="nav-header">
+                <button class="back-btn" onclick="goToStep(3)">⬅ Back</button>
+                <h3 style="margin:0;">Scan UPI QR Code</h3>
+                <div></div>
+            </div>
+            
+            <p style="font-size: 14px; color: #94a3b8; margin: 5px 0;">Scan using GPay, PhonePe, Paytm or any UPI App</p>
+            
+            <img id="upiQrCode" class="qr-img" src="" alt="UPI QR Code">
+            
+            <h2 style="color: #38bdf8; margin: 10px 0;">Amount: ₹<span id="payAmountText">0</span></h2>
+            
+            <button class="big-btn" style="background: var(--success);" onclick="confirmPaymentAndPrint()">I Have Paid - Start Printing 🖨️</button>
+        </div>
+
+        <!-- STEP 5: SUCCESS -->
         <div class="step-container" id="step5">
             <div style="font-size: 50px; color: #22c55e;">✅</div>
             <h2 style="color: #22c55e; margin: 10px 0;">Printing In Progress!</h2>
@@ -150,7 +159,7 @@ KIOSK_HTML = """
         let selectedColorMode = 'BW';
         let baseRate = 2;
         let selectedFilesArr = [];
-        let calculatedPages = 0;
+        let totalDocPages = 0;
         let finalCost = 0;
 
         function goToStep(stepNum) {
@@ -183,11 +192,36 @@ KIOSK_HTML = """
             const res = await fetch('/count-multiple-pages', { method: 'POST', body: formData });
             const data = await res.json();
             
-            calculatedPages = data.total_pages || selectedFilesArr.length;
-            calculateTotal();
+            totalDocPages = data.total_pages || selectedFilesArr.length;
 
+            document.getElementById('pageRangeBox').style.display = 'block';
             document.getElementById('priceSummaryBox').style.display = 'block';
             document.getElementById('proceedToPayBtn').style.display = 'block';
+
+            calculateTotal();
+        }
+
+        function parsePageRange(rangeStr, maxPages) {
+            if (!rangeStr || rangeStr.trim() === "" || rangeStr.toLowerCase() === "all") {
+                return maxPages;
+            }
+            let pages = new Set();
+            let parts = rangeStr.split(',');
+            parts.forEach(part => {
+                part = part.trim();
+                if (part.includes('-')) {
+                    let [start, end] = part.split('-').map(num => parseInt(num.trim()));
+                    if (start && end) {
+                        for (let i = start; i <= end; i++) {
+                            if (i >= 1 && i <= maxPages) pages.add(i);
+                        }
+                    }
+                } else {
+                    let p = parseInt(part);
+                    if (p && p >= 1 && p <= maxPages) pages.add(p);
+                }
+            });
+            return pages.size > 0 ? pages.size : maxPages;
         }
 
         function calculateTotal() {
@@ -195,46 +229,36 @@ KIOSK_HTML = """
 
             let copies = parseInt(document.getElementById('copyCount').value) || 1;
             let sides = document.getElementById('printSides').value;
-            
+            let rangeInput = document.getElementById('pageRange').value;
+
+            let pagesToPrint = parsePageRange(rangeInput, totalDocPages);
+
             let ratePerPage = baseRate;
             if(sides === 'double') ratePerPage = baseRate * 0.8;
 
-            finalCost = Math.ceil(calculatedPages * ratePerPage * copies);
+            finalCost = Math.ceil(pagesToPrint * ratePerPage * copies);
 
-            document.getElementById('totalFilesText').innerText = selectedFilesArr.length;
-            document.getElementById('totalPagesText').innerText = calculatedPages;
+            document.getElementById('docPagesText').innerText = totalDocPages;
+            document.getElementById('totalPagesText').innerText = pagesToPrint;
             document.getElementById('copiesSummaryText').innerText = copies;
             document.getElementById('finalAmountText').innerText = finalCost;
         }
 
-        async function payAndPrint() {
+        async function generatePayment() {
             if (finalCost <= 0) finalCost = 2;
-
-            const res = await fetch('/create-order', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: finalCost })
-            });
-            const order = await res.json();
-
-            const options = {
-                "key": "rzp_test_TURAyEBXgKmNLg",
-                "amount": order.amount,
-                "currency": "INR",
-                "name": "CampusPrint",
-                "order_id": order.id,
-                "handler": function (response) {
-                    executeActualPrint();
-                }
-            };
-            const rzp = new Razorpay(options);
-            rzp.open();
+            document.getElementById('payAmountText').innerText = finalCost;
+            
+            const res = await fetch(`/get-upi-qr?amount=${finalCost}`);
+            const data = await res.json();
+            document.getElementById('upiQrCode').src = data.qr;
+            goToStep(4);
         }
 
-        async function executeActualPrint() {
+        async function confirmPaymentAndPrint() {
             const formData = new FormData();
             selectedFilesArr.forEach(file => formData.append('files', file));
             formData.append('copies', document.getElementById('copyCount').value);
+            formData.append('range', document.getElementById('pageRange').value);
 
             const res = await fetch('/print-multiple', { method: 'POST', body: formData });
             const data = await res.json();
@@ -249,8 +273,11 @@ KIOSK_HTML = """
 
         function resetKiosk() {
             selectedFilesArr = [];
+            totalDocPages = 0;
             document.getElementById('fileInput').value = "";
+            document.getElementById('pageRange').value = "";
             document.getElementById('fileListContainer').innerHTML = "";
+            document.getElementById('pageRangeBox').style.display = 'none';
             document.getElementById('priceSummaryBox').style.display = 'none';
             document.getElementById('proceedToPayBtn').style.display = 'none';
             goToStep(1);
@@ -278,14 +305,13 @@ def count_multiple_pages():
         else:
             total_pages += 1
     return jsonify({'total_pages': total_pages})
-    
-@app.route('/create-order', methods=['POST'])
-def create_order():
-    data = request.json
-    amount_in_paise = int(data['amount']) * 100  
-    order_data = {'amount': amount_in_paise, 'currency': 'INR', 'payment_capture': 1}
-    order = client.order.create(data=order_data)
-    return jsonify(order)
+
+@app.route('/get-upi-qr', methods=['GET'])
+def get_upi_qr():
+    amount = request.args.get('amount', '2')
+    upi_url = f"upi://pay?pa={YOUR_UPI_ID}&pn={urllib.parse.quote(YOUR_NAME)}&am={amount}&cu=INR"
+    qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={urllib.parse.quote(upi_url)}"
+    return jsonify({'qr': qr_api_url})
 
 @app.route('/print-multiple', methods=['POST'])
 def print_multiple():
@@ -296,10 +322,8 @@ def print_multiple():
         if win32print and win32api:
             printer = TARGET_PRINTER if TARGET_PRINTER else win32print.GetDefaultPrinter()
             for file in files:
-                ext = os.path.splitext(file.filename)[1]
                 temp_path = os.path.join(tempfile.gettempdir(), f"job_{file.filename}")
                 file.save(temp_path)
-
                 for _ in range(copies):
                     win32api.ShellExecute(0, "print", temp_path, f'/d:"{printer}"', ".", 0)
             return jsonify({'success': True})
