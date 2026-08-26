@@ -13,9 +13,6 @@ except ImportError:
     win32print = None
 app = Flask(__name__)
 
-app = Flask(__name__) # Ye pehle se hoga
-
-# Iske niche ye paste kar:
 RAZORPAY_KEY_ID = "rzp_test_TURAyEBXgKmNLg" 
 RAZORPAY_KEY_SECRET = "xVmhu8l2YKP0zWJ9AWjXvH5x"
 client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
