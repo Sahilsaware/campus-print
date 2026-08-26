@@ -2,6 +2,7 @@ import os
 import socket
 import tempfile
 import urllib.parse
+import razorpay
 from flask import Flask, render_template_string, request, jsonify
 from PyPDF2 import PdfReader
 try:
@@ -11,6 +12,13 @@ except ImportError:
     win32api = None
     win32print = None
 app = Flask(__name__)
+
+app = Flask(__name__) # Ye pehle se hoga
+
+# Iske niche ye paste kar:
+RAZORPAY_KEY_ID = "rzp_test_TURAyEBXgKmNLg" 
+RAZORPAY_KEY_SECRET = "xVmhu8l2YKP0zWJ9AWjXvH5x"
+client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
 YOUR_UPI_ID = "9324557708@ptyes"
 YOUR_NAME = "CampusPrint Kiosk"
@@ -267,7 +275,15 @@ def count_multiple_pages():
         else:
             total_pages += 1
     return jsonify({'total_pages': total_pages})
-
+    
+@app.route('/create-order', methods=['POST'])
+def create_order():
+    data = request.json
+    amount_in_paise = int(data['amount']) * 100  
+    order_data = {'amount': amount_in_paise, 'currency': 'INR', 'payment_capture': 1}
+    order = client.order.create(data=order_data)
+    return jsonify(order)
+    
 @app.route('/get-upi-qr')
 def get_upi_qr():
     amount = request.args.get('amount', '2')
