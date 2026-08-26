@@ -25,6 +25,7 @@ KIOSK_HTML = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src='https://checkout.razorpay.com/v1/checkout.js'></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CampusPrint Kiosk Machine</title>
@@ -55,6 +56,30 @@ KIOSK_HTML = """
         .file-item { background: #334155; padding: 8px 12px; border-radius: 6px; font-size: 12px; margin-bottom: 5px; text-align: left; }
     </style>
 </head>
+<script>
+async function payAndPrint(totalAmount) {
+    const res = await fetch('/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: totalAmount })
+    });
+    const order = await res.json();
+
+    const options = {
+        "key": "rzp_test_TURAYEBXgKmNLg", // Ye tumhari test key hai
+        "amount": order.amount,
+        "currency": "INR",
+        "name": "CampusPrint",
+        "order_id": order.id,
+        "handler": function (response) {
+            alert("Payment Successful! Txn ID: " + response.razorpay_payment_id);
+            // Yahan automatic print ki code aayegi
+        }
+    };
+    const rzp = new Razorpay(options);
+    rzp.open();
+}
+</script>
 <body>
 
     <div class="kiosk-box">
@@ -69,7 +94,8 @@ KIOSK_HTML = """
         <!-- STEP 2: PRINT OPTIONS & CONFIG -->
         <div class="step-container" id="step2">
             <div class="nav-header">
-                <button class="back-btn" onclick="goToStep(1)">⬅ Back</button>
+               <button onclick="goToStep(1)">← Back</button>
+               <button onclick="payAndPrint(10)">Pay ₹10 & Print</button>
                 <h3 style="margin:0;">Print Settings</h3>
                 <div></div>
             </div>
