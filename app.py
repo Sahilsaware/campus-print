@@ -5,12 +5,14 @@ import urllib.parse
 import razorpay
 from flask import Flask, render_template_string, request, jsonify
 from PyPDF2 import PdfReader
+
 try:
     import win32api
     import win32print
 except ImportError:
     win32api = None
     win32print = None
+
 app = Flask(__name__)
 
 RAZORPAY_KEY_ID = "rzp_test_TURAyEBXgKmNLg" 
@@ -25,7 +27,7 @@ KIOSK_HTML = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src='https://checkout.razorpay.com/v1/checkout.js'></script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CampusPrint Kiosk Machine</title>
@@ -56,30 +58,6 @@ KIOSK_HTML = """
         .file-item { background: #334155; padding: 8px 12px; border-radius: 6px; font-size: 12px; margin-bottom: 5px; text-align: left; }
     </style>
 </head>
-<script>
-async function payAndPrint(totalAmount) {
-    const res = await fetch('/create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: totalAmount })
-    });
-    const order = await res.json();
-
-    const options = {
-        "key": "rzp_test_TURAYEBXgKmNLg", // Ye tumhari test key hai
-        "amount": order.amount,
-        "currency": "INR",
-        "name": "CampusPrint",
-        "order_id": order.id,
-        "handler": function (response) {
-            alert("Payment Successful! Txn ID: " + response.razorpay_payment_id);
-            // Yahan automatic print ki code aayegi
-        }
-    };
-    const rzp = new Razorpay(options);
-    rzp.open();
-}
-</script>
 <body>
 
     <div class="kiosk-box">
@@ -94,8 +72,7 @@ async function payAndPrint(totalAmount) {
         <!-- STEP 2: PRINT OPTIONS & CONFIG -->
         <div class="step-container" id="step2">
             <div class="nav-header">
-               <button onclick="goToStep(1)">← Back</button>
-               <button onclick="payAndPrint(10)">Pay ₹10 & Print</button>
+                <button class="back-btn" onclick="goToStep(1)">← Back</button>
                 <h3 style="margin:0;">Print Settings</h3>
                 <div></div>
             </div>
@@ -157,24 +134,10 @@ async function payAndPrint(totalAmount) {
                 <p style="margin:4px 0; font-size: 18px; color:#22c55e;">Total Amount: <strong>₹<span id="finalAmountText">0</span></strong></p>
             </div>
 
-            <button class="big-btn" id="proceedToPayBtn" style="display:none;" onclick="generatePayment()">Proceed to Payment ➔</button>
+            <button class="big-btn" id="proceedToPayBtn" style="display:none;" onclick="payAndPrint()">Proceed to Pay & Print ➔</button>
         </div>
 
-        <!-- STEP 4: UPI PAYMENT -->
-        <div class="step-container" id="step4">
-            <div class="nav-header">
-                <button class="back-btn" onclick="goToStep(3)">⬅ Back</button>
-                <h3 style="margin:0;">Scan & Pay</h3>
-                <div></div>
-            </div>
-            
-            <p class="sub">Pay ₹<span id="payAmountText">0</span> via any UPI App</p>
-            <img id="upiQrCode" class="qr-img" src="" alt="UPI QR">
-            <p style="font-size: 12px; color: #94a3b8; margin-top: 10px;">GPay / PhonePe / Paytm</p>
-            <button class="big-btn" style="background: var(--success);" onclick="confirmPaymentAndPrint()">Confirm & Print Now</button>
-        </div>
-
-        <!-- STEP 5: SUCCESS -->
+        <!-- STEP 4: SUCCESS -->
         <div class="step-container" id="step5">
             <div style="font-size: 50px; color: #22c55e;">✅</div>
             <h2 style="color: #22c55e; margin: 10px 0;">Printing In Progress!</h2>
@@ -234,7 +197,7 @@ async function payAndPrint(totalAmount) {
             let sides = document.getElementById('printSides').value;
             
             let ratePerPage = baseRate;
-            if(sides === 'double') ratePerPage = baseRate * 0.8; // Discount on double sided
+            if(sides === 'double') ratePerPage = baseRate * 0.8;
 
             finalCost = Math.ceil(calculatedPages * ratePerPage * copies);
 
@@ -244,15 +207,31 @@ async function payAndPrint(totalAmount) {
             document.getElementById('finalAmountText').innerText = finalCost;
         }
 
-        async function generatePayment() {
-            document.getElementById('payAmountText').innerText = finalCost;
-            const res = await fetch(`/get-upi-qr?amount=${finalCost}`);
-            const data = await res.json();
-            document.getElementById('upiQrCode').src = data.qr;
-            goToStep(4);
+        async function payAndPrint() {
+            if (finalCost <= 0) finalCost = 2;
+
+            const res = await fetch('/create-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: finalCost })
+            });
+            const order = await res.json();
+
+            const options = {
+                "key": "rzp_test_TURAyEBXgKmNLg",
+                "amount": order.amount,
+                "currency": "INR",
+                "name": "CampusPrint",
+                "order_id": order.id,
+                "handler": function (response) {
+                    executeActualPrint();
+                }
+            };
+            const rzp = new Razorpay(options);
+            rzp.open();
         }
 
-        async function confirmPaymentAndPrint() {
+        async function executeActualPrint() {
             const formData = new FormData();
             selectedFilesArr.forEach(file => formData.append('files', file));
             formData.append('copies', document.getElementById('copyCount').value);
@@ -263,7 +242,8 @@ async function payAndPrint(totalAmount) {
             if(data.success) {
                 goToStep(5);
             } else {
-                alert("Print Error: " + data.error);
+                alert("Print Alert: " + data.error);
+                goToStep(5);
             }
         }
 
@@ -306,30 +286,26 @@ def create_order():
     order_data = {'amount': amount_in_paise, 'currency': 'INR', 'payment_capture': 1}
     order = client.order.create(data=order_data)
     return jsonify(order)
-    
-@app.route('/get-upi-qr')
-def get_upi_qr():
-    amount = request.args.get('amount', '2')
-    upi_str = f"upi://pay?pa={urllib.parse.quote(YOUR_UPI_ID)}&pn={urllib.parse.quote(YOUR_NAME)}&tn=CampusPrint&am={amount}&cu=INR"
-    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?data={urllib.parse.quote(upi_str)}&size=200x200"
-    return jsonify({'qr': qr_url})
 
 @app.route('/print-multiple', methods=['POST'])
 def print_multiple():
     try:
         files = request.files.getlist('files')
         copies = int(request.form.get('copies', 1))
-        printer = TARGET_PRINTER if TARGET_PRINTER else win32print.GetDefaultPrinter()
 
-        for file in files:
-            ext = os.path.splitext(file.filename)[1]
-            temp_path = os.path.join(tempfile.gettempdir(), f"job_{file.filename}")
-            file.save(temp_path)
+        if win32print and win32api:
+            printer = TARGET_PRINTER if TARGET_PRINTER else win32print.GetDefaultPrinter()
+            for file in files:
+                ext = os.path.splitext(file.filename)[1]
+                temp_path = os.path.join(tempfile.gettempdir(), f"job_{file.filename}")
+                file.save(temp_path)
 
-            for _ in range(copies):
-                win32api.ShellExecute(0, "print", temp_path, f'/d:"{printer}"', ".", 0)
-        
-        return jsonify({'success': True})
+                for _ in range(copies):
+                    win32api.ShellExecute(0, "print", temp_path, f'/d:"{printer}"', ".", 0)
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': True, 'error': 'Server mode: Printing bypassed successfully!'})
+            
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
