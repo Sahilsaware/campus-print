@@ -13,8 +13,6 @@ except ImportError:
 
 app = Flask(__name__)
 
-YOUR_UPI_ID = "9324557708@ptyes"
-YOUR_NAME = "CampusPrint Kiosk"
 TARGET_PRINTER = None  
 
 KIOSK_HTML = """
@@ -24,6 +22,8 @@ KIOSK_HTML = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CampusPrint Kiosk Machine</title>
+    <!-- Razorpay Standard Checkout SDK -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <style>
         :root { --primary: #2563eb; --success: #16a34a; --bg: #0f172a; --card-bg: #1e293b; --text: #f8fafc; }
         body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
@@ -47,7 +47,6 @@ KIOSK_HTML = """
 
         .upload-area { border: 2px dashed #475569; padding: 25px; border-radius: 16px; margin: 15px 0; cursor: pointer; background: #0f172a; display: block; }
         .price-summary { background: #0f172a; padding: 15px; border-radius: 12px; text-align: left; margin: 15px 0; }
-        .qr-img { background: white; padding: 10px; border-radius: 12px; width: 200px; height: 200px; margin: 10px auto; }
         .file-item { background: #334155; padding: 8px 12px; border-radius: 6px; font-size: 12px; margin-bottom: 5px; text-align: left; }
     </style>
 </head>
@@ -97,11 +96,11 @@ KIOSK_HTML = """
             <button class="big-btn" onclick="goToStep(3)">Next: Select Files ➔</button>
         </div>
 
-        <!-- STEP 3: UPLOAD & PAGE SELECTION -->
+        <!-- STEP 3: UPLOAD DOCUMENTS -->
         <div class="step-container" id="step3">
             <div class="nav-header">
                 <button class="back-btn" onclick="goToStep(2)">⬅ Back</button>
-                <h3 style="margin:0;">Upload & Range</h3>
+                <h3 style="margin:0;">Upload Documents</h3>
                 <div></div>
             </div>
 
@@ -126,28 +125,11 @@ KIOSK_HTML = """
                 <p style="margin:4px 0; font-size: 18px; color:#22c55e;">Total Amount: <strong>₹<span id="finalAmountText">0</span></strong></p>
             </div>
 
-            <button class="big-btn" id="proceedToPayBtn" style="display:none;" onclick="generatePayment()">Scan & Pay ➔</button>
+            <button class="big-btn" id="proceedToPayBtn" style="display:none;" onclick="payWithRazorpay()">Proceed to Payment ➔</button>
         </div>
 
-        <!-- STEP 4: SCANNER SCREEN -->
+        <!-- STEP 4: SUCCESS -->
         <div class="step-container" id="step4">
-            <div class="nav-header">
-                <button class="back-btn" onclick="goToStep(3)">⬅ Back</button>
-                <h3 style="margin:0;">Scan UPI QR Code</h3>
-                <div></div>
-            </div>
-            
-            <p style="font-size: 14px; color: #94a3b8; margin: 5px 0;">Scan using GPay, PhonePe, Paytm or any UPI App</p>
-            
-            <img id="upiQrCode" class="qr-img" src="" alt="UPI QR Code">
-            
-            <h2 style="color: #38bdf8; margin: 10px 0;">Amount: ₹<span id="payAmountText">0</span></h2>
-            
-            <button class="big-btn" style="background: var(--success);" onclick="confirmPaymentAndPrint()">I Have Paid - Start Printing 🖨️</button>
-        </div>
-
-        <!-- STEP 5: SUCCESS -->
-        <div class="step-container" id="step5">
             <div style="font-size: 50px; color: #22c55e;">✅</div>
             <h2 style="color: #22c55e; margin: 10px 0;">Printing In Progress!</h2>
             <p style="font-size: 15px; color: #94a3b8; line-height: 1.4;">Please collect your printed documents from the output tray below. 📥</p>
@@ -244,14 +226,24 @@ KIOSK_HTML = """
             document.getElementById('finalAmountText').innerText = finalCost;
         }
 
-        async function generatePayment() {
+        function payWithRazorpay() {
             if (finalCost <= 0) finalCost = 2;
-            document.getElementById('payAmountText').innerText = finalCost;
-            
-            const res = await fetch(`/get-upi-qr?amount=${finalCost}`);
-            const data = await res.json();
-            document.getElementById('upiQrCode').src = data.qr;
-            goToStep(4);
+
+            const options = {
+                "key": "rzp_test_TURAyEBXgKmNLg",
+                "amount": finalCost * 100, // Amount in paise
+                "currency": "INR",
+                "name": "CampusPrint",
+                "description": "Document Printing Fee",
+                "handler": function (response) {
+                    confirmPaymentAndPrint();
+                },
+                "theme": {
+                    "color": "#2563eb"
+                }
+            };
+            const rzp = new Razorpay(options);
+            rzp.open();
         }
 
         async function confirmPaymentAndPrint() {
@@ -264,10 +256,10 @@ KIOSK_HTML = """
             const data = await res.json();
 
             if(data.success) {
-                goToStep(5);
+                goToStep(4);
             } else {
                 alert("Print Alert: " + data.error);
-                goToStep(5);
+                goToStep(4);
             }
         }
 
@@ -305,13 +297,6 @@ def count_multiple_pages():
         else:
             total_pages += 1
     return jsonify({'total_pages': total_pages})
-
-@app.route('/get-upi-qr', methods=['GET'])
-def get_upi_qr():
-    amount = request.args.get('amount', '2')
-    upi_url = f"upi://pay?pa={YOUR_UPI_ID}&pn={urllib.parse.quote(YOUR_NAME)}&am={amount}&cu=INR"
-    qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={urllib.parse.quote(upi_url)}"
-    return jsonify({'qr': qr_api_url})
 
 @app.route('/print-multiple', methods=['POST'])
 def print_multiple():
