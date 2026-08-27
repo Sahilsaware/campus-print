@@ -16,11 +16,10 @@ except ImportError:
 app = Flask(__name__)
 TARGET_PRINTER = None
 
-# Background Print Queue Setup
+# Background Print Queue
 print_queue = queue.Queue()
 
 def print_worker():
-    """Background thread jo multi-user queue ko step-by-step execute aur clean karta hai."""
     while True:
         job = print_queue.get()
         if job is None:
@@ -32,13 +31,12 @@ def print_worker():
                 printer = TARGET_PRINTER if TARGET_PRINTER else win32print.GetDefaultPrinter()
                 for _ in range(copies):
                     win32api.ShellExecute(0, "print", file_path, f'/d:"{printer}"', ".", 0)
-                    time.sleep(1) # Spooler stability buffer
+                    time.sleep(1)
             else:
                 print(f"[MOCK PRINT] File: {file_path} | Copies: {copies}")
         except Exception as e:
             print(f"Print job error: {e}")
         finally:
-            # Auto-Delete after printing
             if os.path.exists(file_path):
                 try:
                     os.remove(file_path)
@@ -46,7 +44,6 @@ def print_worker():
                     pass
             print_queue.task_done()
 
-# Worker thread launch
 threading.Thread(target=print_worker, daemon=True).start()
 
 KIOSK_HTML = """
@@ -56,43 +53,55 @@ KIOSK_HTML = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CampusPrint Kiosk</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f9; }
-        .container { max-width: 600px; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin: 0 auto; }
-        h2 { text-align: center; color: #333; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input[type="file"], input[type="number"], input[type="text"] { width: 100%; padding: 8px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #28a745; color: white; border: none; font-size: 16px; border-radius: 5px; cursor: pointer; margin-top: 10px; }
-        button:hover { background: #218838; }
-        .price-box { margin-top: 15px; padding: 10px; background: #e9ecef; border-radius: 5px; text-align: center; font-size: 18px; font-weight: bold; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .card { background: #ffffff; width: 100%; max-width: 500px; padding: 35px 30px; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); }
+        .header { text-align: center; margin-bottom: 25px; }
+        .header h2 { font-size: 26px; color: #2d3748; font-weight: 700; }
+        .header p { color: #718096; font-size: 14px; margin-top: 4px; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; font-size: 14px; font-weight: 600; color: #4a5568; margin-bottom: 8px; }
+        .input-control { width: 100%; padding: 12px 14px; font-size: 14px; border: 2px solid #e2e8f0; border-radius: 10px; outline: none; transition: 0.3s; }
+        .input-control:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.15); }
+        input[type="file"] { background: #f7fafc; cursor: pointer; }
+        .price-summary { background: #f7fafc; border: 1px dashed #cbd5e0; border-radius: 12px; padding: 15px; text-align: center; margin: 20px 0; }
+        .price-summary span { font-size: 18px; font-weight: 700; color: #2d3748; }
+        .btn-pay { width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 14px; font-size: 16px; font-weight: 600; border-radius: 10px; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 12px rgba(118,75,162,0.3); }
+        .btn-pay:hover { opacity: 0.95; transform: translateY(-1px); }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>CampusPrint Kiosk</h2>
+<div class="card">
+    <div class="header">
+        <h2>CampusPrint Kiosk</h2>
+        <p>Instant Smart Document Printing</p>
+    </div>
+    
     <form id="printForm">
         <div class="form-group">
-            <label>Select Document(s):</label>
-            <input type="file" id="fileInput" name="files" multiple required>
+            <label>Select Document(s)</label>
+            <input type="file" id="fileInput" class="input-control" name="files" multiple required>
         </div>
         
         <div class="form-group">
-            <label>Copies:</label>
-            <input type="number" id="copies" name="copies" value="1" min="1" required>
+            <label>Number of Copies</label>
+            <input type="number" id="copies" class="input-control" name="copies" value="1" min="1" required>
         </div>
 
         <div class="form-group">
-            <label>Page Range (e.g., "1-3, 5" or leave blank for All):</label>
-            <input type="text" id="pageRange" name="range" placeholder="e.g. 1-5">
+            <label>Page Range</label>
+            <input type="text" id="pageRange" class="input-control" name="range" placeholder="e.g. 1-3, 5 (Leave blank for All)">
         </div>
 
-        <div class="price-box">
-            Total Pages: <span id="totalPages">0</span> | Price: ₹<span id="totalCost">0</span>
+        <div class="price-summary">
+            Pages: <span id="totalPages">0</span> | Total: <span style="color:#667eea;">₹<span id="totalCost">0</span></span>
         </div>
 
-        <button type="submit" id="payBtn">Print Document</button>
+        <button type="submit" id="payBtn" class="btn-pay">Pay & Print</button>
     </form>
 </div>
 
@@ -228,13 +237,11 @@ def print_multiple():
                 with open(final_print_path, "wb") as f_out:
                     writer.write(f_out)
                 
-                # Raw file clear karo after slicing
                 if os.path.exists(temp_input):
                     os.remove(temp_input)
             else:
                 final_print_path = temp_input
 
-            # Queue me add karo background thread handling ke liye
             print_queue.put((final_print_path, copies))
 
         return jsonify({'success': True})
