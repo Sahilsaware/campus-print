@@ -1,4 +1,7 @@
 import os
+import time
+import queue
+import threading
 import tempfile
 from flask import Flask, render_template_string, request, jsonify
 from PyPDF2 import PdfReader
@@ -6,14 +9,51 @@ from PyPDF2 import PdfReader
 try:
     import win32api
     import win32print
+    HAS_WIN32 = True
 except ImportError:
-    win32api = None
-    win32print = None
+    HAS_WIN32 = False
 
 app = Flask(__name__)
-
 TARGET_PRINTER = None  
 
+# ---------------------------------------------------------
+# 1. Background Print Queue & Worker Thread Setup
+# ---------------------------------------------------------
+print_queue = queue.Queue()
+
+def print_worker():
+    """Background worker jo print jobs queue se pick karta hai safe execution aur auto-cleanup ke sath."""
+    while True:
+        job = print_queue.get()
+        if job is None:
+            break
+        
+        file_path, copies = job
+        try:
+            if HAS_WIN32:
+                printer = TARGET_PRINTER if TARGET_PRINTER else win32print.GetDefaultPrinter()
+                for _ in range(copies):
+                    win32api.ShellExecute(0, "print", file_path, f'/d:"{printer}"', ".", 0)
+                    time.sleep(1)
+            else:
+                print(f"[SERVER MODE Bypassed Print] File: {file_path} | Copies: {copies}")
+        except Exception as e:
+            print(f"Print Worker Error: {e}")
+        finally:
+            # 2. Automatic Temporary File Cleanup
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except Exception as clean_err:
+                    print(f"Temp Cleanup Error: {clean_err}")
+            print_queue.task_done()
+
+# Start background thread
+threading.Thread(target=print_worker, daemon=True).start()
+
+# ---------------------------------------------------------
+# UI HTML Content (Original Design Retained)
+# ---------------------------------------------------------
 KIOSK_HTML = """
 <!DOCTYPE html>
 <html lang="en">
@@ -750,7 +790,7 @@ def count_multiple_pages():
             try:
                 reader = PdfReader(file)
                 total_pages += len(reader.pages)
-            except:
+            except Exception:
                 total_pages += 1
         else:
             total_pages += 1
@@ -762,16 +802,13 @@ def print_multiple():
         files = request.files.getlist('files')
         copies = int(request.form.get('copies', 1))
 
-        if win32print and win32api:
-            printer = TARGET_PRINTER if TARGET_PRINTER else win32print.GetDefaultPrinter()
-            for file in files:
-                temp_path = os.path.join(tempfile.gettempdir(), f"job_{file.filename}")
-                file.save(temp_path)
-                for _ in range(copies):
-                    win32api.ShellExecute(0, "print", temp_path, f'/d:"{printer}"', ".", 0)
-            return jsonify({'success': True})
-        else:
-            return jsonify({'success': True, 'error': 'Server mode: Printing bypassed successfully!'})
+        for file in files:
+            temp_path = os.path.join(tempfile.gettempdir(), f"job_{file.filename}")
+            file.save(temp_path)
+            # Send file path & copy count to background queue worker
+            print_queue.put((temp_path, copies))
+
+        return jsonify({'success': True})
             
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
