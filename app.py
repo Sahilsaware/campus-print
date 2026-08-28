@@ -52,7 +52,6 @@ def print_multiple():
     files = request.files.getlist('files')
     copies = int(request.form.get('copies', 1))
 
-    # Check if Windows print drivers are loaded
     if sys.platform != "win32" or not win32print:
         return jsonify({'success': True, 'message': 'Simulated print success (Cloud/Non-Windows platform)'})
 
