@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Print - Fast & Instant Printing</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background-glow"></div>
+    
+    <main class="app-container">
+        <header class="brand-header">
+            <div class="logo">⚡ Campus<span>Print</span></div>
+            <p class="tagline">Instant document printing at your fingertips</p>
+        </header>
+
+        <section class="card upload-card">
+            <div class="step-badge">Step 1</div>
+            <h2>Upload Document</h2>
+            <div class="drop-zone" id="dropZone">
+                <input type="file" id="fileInput" accept=".pdf" hidden>
+                <div class="upload-icon">📄</div>
+                <p class="upload-title">Drag & drop your PDF here</p>
+                <p class="upload-sub">or <span class="browse-btn">browse file</span></p>
+                <div class="file-info" id="fileInfo"></div>
+            </div>
+        </section>
+
+        <section class="card options-card">
+            <div class="step-badge">Step 2</div>
+            <h2>Print Preferences</h2>
+            
+            <div class="option-group">
+                <label class="group-label">Print Sides</label>
+                <div class="toggle-grid">
+                    <label class="toggle-card">
+                        <input type="radio" name="printSides" value="single" checked onchange="updateTotal()">
+                        <div class="toggle-content">
+                            <span class="title">Single Side</span>
+                            <span class="desc">Standard single page print</span>
+                        </div>
+                    </label>
+                    <label class="toggle-card">
+                        <input type="radio" name="printSides" value="double" onchange="updateTotal()">
+                        <div class="toggle-content">
+                            <span class="title">Double Side</span>
+                            <span class="desc">Back to back printing</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="option-group">
+                <label class="group-label">Color Option</label>
+                <div class="toggle-grid">
+                    <label class="toggle-card">
+                        <input type="radio" name="colorMode" value="bw" checked onchange="updateTotal()">
+                        <div class="toggle-content">
+                            <span class="title">Black & White</span>
+                            <span class="desc">Standard document</span>
+                        </div>
+                    </label>
+                    <label class="toggle-card">
+                        <input type="radio" name="colorMode" value="color" onchange="updateTotal()">
+                        <div class="toggle-content">
+                            <span class="title">Color</span>
+                            <span class="desc">Vibrant full color</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="option-group">
+                <label class="group-label" for="copies">Number of Copies</label>
+                <div class="quantity-control">
+                    <button type="button" onclick="changeCopies(-1)">-</button>
+                    <input type="number" id="copies" value="1" min="1" readonly onchange="updateTotal()">
+                    <button type="button" onclick="changeCopies(1)">+</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="card summary-card">
+            <div class="summary-details">
+                <div class="summary-row">
+                    <span>Total Pages</span>
+                    <span id="pageCountDisplay">0</span>
+                </div>
+                <div class="summary-row total-row">
+                    <span>Final Amount</span>
+                    <span class="total-price">₹<span id="totalPrice">0</span></span>
+                </div>
+            </div>
+            <button class="pay-btn" id="payBtn">Proceed to Pay & Print</button>
+        </section>
+    </main>
+
+    <script>
+        let totalPages = 1;
+
+        function changeCopies(delta) {
+            const input = document.getElementById('copies');
+            let val = parseInt(input.value) + delta;
+            if (val >= 1) {
+                input.value = val;
+                updateTotal();
+            }
+        }
+
+        function updateTotal() {
+            const copies = parseInt(document.getElementById('copies').value) || 1;
+            const isColor = document.querySelector('input[name="colorMode"]:checked').value === 'color';
+            const pageRate = isColor ? 10 : 2; 
+            const total = totalPages * copies * pageRate;
+            document.getElementById('totalPrice').innerText = total;
+        }
+
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                document.getElementById('fileInfo').innerText = "Selected: " + e.target.files[0].name;
+                updateTotal();
+            }
+        });
+    </script>
+</body>
+</html>
