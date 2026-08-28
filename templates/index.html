@@ -3,130 +3,216 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Campus Print - Fast & Instant Printing</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>CampusPrint - Instant Document Printing</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="background-glow"></div>
-    
-    <main class="app-container">
-        <header class="brand-header">
+    <div class="main-container">
+        <!-- Brand Header -->
+        <div class="header">
             <div class="logo">⚡ Campus<span>Print</span></div>
-            <p class="tagline">Instant document printing at your fingertips</p>
-        </header>
+            <p class="subtitle">Instant document printing at your fingertips</p>
+        </div>
 
-        <section class="card upload-card">
-            <div class="step-badge">Step 1</div>
-            <h2>Upload Document</h2>
-            <div class="drop-zone" id="dropZone">
-                <input type="file" id="fileInput" accept=".pdf" hidden>
-                <div class="upload-icon">📄</div>
-                <p class="upload-title">Drag & drop your PDF here</p>
-                <p class="upload-sub">or <span class="browse-btn">browse file</span></p>
-                <div class="file-info" id="fileInfo"></div>
+        <!-- STEP 1: Upload Document -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Upload Document</h2>
+                <span class="step-badge">STEP 1</span>
             </div>
-        </section>
-
-        <section class="card options-card">
-            <div class="step-badge">Step 2</div>
-            <h2>Print Preferences</h2>
             
-            <div class="option-group">
-                <label class="group-label">Print Sides</label>
-                <div class="toggle-grid">
-                    <label class="toggle-card">
-                        <input type="radio" name="printSides" value="single" checked onchange="updateTotal()">
-                        <div class="toggle-content">
-                            <span class="title">Single Side</span>
-                            <span class="desc">Standard single page print</span>
-                        </div>
-                    </label>
-                    <label class="toggle-card">
-                        <input type="radio" name="printSides" value="double" onchange="updateTotal()">
-                        <div class="toggle-content">
-                            <span class="title">Double Side</span>
-                            <span class="desc">Back to back printing</span>
-                        </div>
-                    </label>
+            <label class="drop-zone" for="fileInput" id="dropZone">
+                <div class="upload-icon">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                </div>
+                <div class="drop-title">Drag & drop your PDF here</div>
+                <div class="drop-sub">or <span class="browse-link">browse file</span></div>
+                <input type="file" id="fileInput" accept="application/pdf,image/*" multiple style="display:none;" onchange="handleMultipleFiles()">
+            </label>
+            <div id="fileListContainer" class="file-list"></div>
+        </div>
+
+        <!-- STEP 2: Print Preferences -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Print Preferences</h2>
+                <span class="step-badge">STEP 2</span>
+            </div>
+
+            <!-- PRINT SIDES -->
+            <div class="field-label">PRINT SIDES</div>
+            <div class="grid-2">
+                <div class="select-box active" id="sideSingle" onclick="selectSides('single')">
+                    <div class="box-title">Single Side</div>
+                    <div class="box-sub">Standard single page print</div>
+                </div>
+                <div class="select-box" id="sideDouble" onclick="selectSides('double')">
+                    <div class="box-title">Double Side</div>
+                    <div class="box-sub">Back to back printing</div>
                 </div>
             </div>
 
-            <div class="option-group">
-                <label class="group-label">Color Option</label>
-                <div class="toggle-grid">
-                    <label class="toggle-card">
-                        <input type="radio" name="colorMode" value="bw" checked onchange="updateTotal()">
-                        <div class="toggle-content">
-                            <span class="title">Black & White</span>
-                            <span class="desc">Standard document</span>
-                        </div>
-                    </label>
-                    <label class="toggle-card">
-                        <input type="radio" name="colorMode" value="color" onchange="updateTotal()">
-                        <div class="toggle-content">
-                            <span class="title">Color</span>
-                            <span class="desc">Vibrant full color</span>
-                        </div>
-                    </label>
+            <!-- COLOR OPTION -->
+            <div class="field-label">COLOR OPTION</div>
+            <div class="grid-2">
+                <div class="select-box active" id="colorBW" onclick="selectColor('BW', 2)">
+                    <div class="box-title">Black & White</div>
+                    <div class="box-sub">Standard document</div>
+                </div>
+                <div class="select-box" id="colorColor" onclick="selectColor('Color', 10)">
+                    <div class="box-title">Color</div>
+                    <div class="box-sub">Vibrant full color</div>
                 </div>
             </div>
 
-            <div class="option-group">
-                <label class="group-label" for="copies">Number of Copies</label>
-                <div class="quantity-control">
-                    <button type="button" onclick="changeCopies(-1)">-</button>
-                    <input type="number" id="copies" value="1" min="1" readonly onchange="updateTotal()">
-                    <button type="button" onclick="changeCopies(1)">+</button>
-                </div>
+            <!-- NUMBER OF COPIES -->
+            <div class="field-label">NUMBER OF COPIES</div>
+            <div class="counter-box">
+                <button class="counter-btn" onclick="updateCopies(-1)">-</button>
+                <span class="counter-value" id="copyCountDisplay">1</span>
+                <button class="counter-btn" onclick="updateCopies(1)">+</button>
             </div>
-        </section>
 
-        <section class="card summary-card">
-            <div class="summary-details">
-                <div class="summary-row">
-                    <span>Total Pages</span>
-                    <span id="pageCountDisplay">0</span>
-                </div>
-                <div class="summary-row total-row">
-                    <span>Final Amount</span>
-                    <span class="total-price">₹<span id="totalPrice">0</span></span>
-                </div>
+            <!-- PAGE RANGE OPTION -->
+            <div class="field-label" style="margin-top: 18px;">PAGE RANGE (OPTIONAL)</div>
+            <input type="text" class="input-text" id="pageRange" placeholder="e.g. 1-5, 8 (Leave empty for all)" oninput="calculateTotal()">
+        </div>
+
+        <!-- SUMMARY CARD -->
+        <div class="card summary-card">
+            <div class="summary-row">
+                <span>Total Pages</span>
+                <span id="docPagesText" class="val">0</span>
             </div>
-            <button class="pay-btn" id="payBtn">Proceed to Pay & Print</button>
-        </section>
-    </main>
+            <div class="summary-row main-total">
+                <span>Final Amount</span>
+                <span class="amount">₹<span id="finalAmountText">0</span></span>
+            </div>
+            <button class="btn-primary" id="payBtn" onclick="payWithRazorpay()">Proceed to Pay & Print</button>
+        </div>
+    </div>
 
     <script>
-        let totalPages = 1;
+        let selectedSides = 'single';
+        let selectedColorMode = 'BW';
+        let baseRate = 2;
+        let copyCount = 1;
+        let selectedFilesArr = [];
+        let totalDocPages = 0;
+        let finalCost = 0;
 
-        function changeCopies(delta) {
-            const input = document.getElementById('copies');
-            let val = parseInt(input.value) + delta;
-            if (val >= 1) {
-                input.value = val;
-                updateTotal();
-            }
+        function selectSides(sides) {
+            selectedSides = sides;
+            document.getElementById('sideSingle').classList.toggle('active', sides === 'single');
+            document.getElementById('sideDouble').classList.toggle('active', sides === 'double');
+            calculateTotal();
         }
 
-        function updateTotal() {
-            const copies = parseInt(document.getElementById('copies').value) || 1;
-            const isColor = document.querySelector('input[name="colorMode"]:checked').value === 'color';
-            const pageRate = isColor ? 10 : 2; 
-            const total = totalPages * copies * pageRate;
-            document.getElementById('totalPrice').innerText = total;
+        function selectColor(mode, rate) {
+            selectedColorMode = mode;
+            baseRate = rate;
+            document.getElementById('colorBW').classList.toggle('active', mode === 'BW');
+            document.getElementById('colorColor').classList.toggle('active', mode === 'Color');
+            calculateTotal();
         }
 
-        const dropZone = document.getElementById('dropZone');
-        const fileInput = document.getElementById('fileInput');
+        function updateCopies(val) {
+            copyCount = Math.max(1, copyCount + val);
+            document.getElementById('copyCountDisplay').innerText = copyCount;
+            calculateTotal();
+        }
 
-        dropZone.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length) {
-                document.getElementById('fileInfo').innerText = "Selected: " + e.target.files[0].name;
-                updateTotal();
+        async function handleMultipleFiles() {
+            const input = document.getElementById('fileInput');
+            if(!input.files.length) return;
+            selectedFilesArr = Array.from(input.files);
+            
+            const container = document.getElementById('fileListContainer');
+            container.innerHTML = selectedFilesArr.map(f => `<div class="file-item">📄 ${f.name}</div>`).join('');
+            
+            const formData = new FormData();
+            selectedFilesArr.forEach(f => formData.append('files', f));
+            const res = await fetch('/count-multiple-pages', { method: 'POST', body: formData });
+            const data = await res.json();
+            totalDocPages = data.total_pages || selectedFilesArr.length;
+
+            calculateTotal();
+        }
+
+        function calculateTotal() {
+            if(!selectedFilesArr.length) {
+                document.getElementById('docPagesText').innerText = "0";
+                document.getElementById('finalAmountText').innerText = "0";
+                return;
             }
-        });
+            
+            let rangeStr = document.getElementById('pageRange').value;
+            let pagesToPrint = parsePageRange(rangeStr, totalDocPages);
+            let rate = selectedSides === 'double' ? baseRate * 0.8 : baseRate;
+            finalCost = Math.ceil(pagesToPrint * rate * copyCount);
+
+            document.getElementById('docPagesText').innerText = pagesToPrint;
+            document.getElementById('finalAmountText').innerText = finalCost;
+        }
+
+        function parsePageRange(rangeStr, maxPages) {
+            if (!rangeStr || !rangeStr.trim()) return maxPages;
+            let pages = new Set();
+            rangeStr.split(',').forEach(part => {
+                part = part.trim();
+                if (part.includes('-')) {
+                    let [start, end] = part.split('-').map(n => parseInt(n.trim()));
+                    if (start && end) {
+                        for (let i = start; i <= end; i++) if (i >= 1 && i <= maxPages) pages.add(i);
+                    }
+                } else {
+                    let p = parseInt(part);
+                    if (p && p >= 1 && p <= maxPages) pages.add(p);
+                }
+            });
+            return pages.size > 0 ? pages.size : maxPages;
+        }
+
+        function payWithRazorpay() {
+            if (!selectedFilesArr.length) {
+                alert("Please select a file first!");
+                return;
+            }
+            if (finalCost <= 0) finalCost = 2;
+
+            const rzp = new Razorpay({
+                "key": "rzp_test_TURAyEBXgKmNLg",
+                "amount": finalCost * 100,
+                "currency": "INR",
+                "name": "CampusPrint Kiosk",
+                "handler": () => confirmPaymentAndPrint()
+            });
+            rzp.open();
+        }
+
+        async function confirmPaymentAndPrint() {
+            const formData = new FormData();
+            selectedFilesArr.forEach(f => formData.append('files', f));
+            formData.append('copies', copyCount);
+            formData.append('range', document.getElementById('pageRange').value);
+            
+            const res = await fetch('/print-multiple', { method: 'POST', body: formData });
+            const data = await res.json();
+            if(data.success) {
+                alert("Printing Request Sent Successfully!");
+                location.reload();
+            } else {
+                alert("Printing Error: " + data.error);
+            }
+        }
     </script>
 </body>
 </html>
