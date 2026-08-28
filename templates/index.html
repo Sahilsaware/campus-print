@@ -14,6 +14,7 @@
         <h1>Campus Print</h1>
     </div>
 
+    <!-- 5-Step Tracker Bar -->
     <div class="step-tracker">
         <div class="step-node active" id="node-1"><span>1</span><label>Home</label></div>
         <div class="step-line"></div>
@@ -27,12 +28,14 @@
     </div>
 
     <div class="kiosk-card">
+        <!-- Step 1: Home / Info -->
         <div class="step-content active" id="step-1">
             <h2 class="styled-heading">Welcome to Campus Print</h2>
             <p class="info-text">Fast and secure printing for students. Upload, customize, and collect instantly.</p>
             <button class="btn" onclick="setStep(2)" style="margin-top: 30px;">Next</button>
         </div>
 
+        <!-- Step 2: Separate Upload Tab -->
         <div class="step-content" id="step-2">
             <h2 class="styled-heading">📁 Upload Document</h2>
             <p class="info-text">Supported formats: PDF, JPG, PNG, Word, PPT</p>
@@ -48,6 +51,7 @@
             </div>
         </div>
 
+        <!-- Step 3: Print Settings -->
         <div class="step-content" id="step-3">
             <h2 class="styled-heading">⚙️ Print Settings</h2>
             
@@ -107,6 +111,7 @@
             </div>
         </div>
 
+        <!-- Step 4: Summary & Payment Tab -->
         <div class="step-content" id="step-4">
             <h2 class="styled-heading">💳 Order Summary & Payment</h2>
             <div class="summary-box">
@@ -122,11 +127,12 @@
             </div>
         </div>
 
+        <!-- Step 5: Status / Print Output -->
         <div class="step-content" id="step-5">
             <h2 class="styled-heading">🖨️ Print Status</h2>
             <div class="printing-loader">
-                <div class="spinner"></div>
-                <p id="status-text" class="status-msg">Printing process is active. Your job is securely in the queue...</p>
+                <div class="spinner" id="loading-spinner"></div>
+                <p id="status-text" class="status-msg">Printing process active. Your job is securely in the queue...</p>
             </div>
             <button class="btn reset-btn" onclick="resetKiosk()">Print Another File</button>
         </div>
@@ -261,6 +267,7 @@
 
     async function sendToPrinter() {
         setStep(5);
+        document.getElementById('loading-spinner').style.display = "block";
         document.getElementById('status-text').innerText = "Printing process active. Secure queue handling your job...";
         
         const files = document.getElementById('file-input').files;
@@ -275,12 +282,16 @@
             const res = await fetch('/print-multiple', { method: 'POST', body: formData });
             const data = await res.json();
             
+            // Hide spinner properly when done
+            document.getElementById('loading-spinner').style.display = "none";
+            
             if (res.ok) {
                 document.getElementById('status-text').innerText = "Payment successful & Print job completed! Please collect your documents safely from the tray.";
             } else {
                 document.getElementById('status-text').innerText = "Printing error: " + (data.error || "Unknown error");
             }
         } catch (e) {
+            document.getElementById('loading-spinner').style.display = "none";
             document.getElementById('status-text').innerText = "Network error: Couldn't complete print job.";
         }
     }
@@ -289,6 +300,7 @@
         document.getElementById('file-input').value = "";
         document.getElementById('page-range').value = "";
         document.getElementById('copies').value = "1";
+        document.getElementById('loading-spinner').style.display = "block";
         setStep(1);
     }
 </script>
