@@ -4,7 +4,6 @@ import tempfile
 from flask import Flask, render_template, request, jsonify
 from pypdf import PdfReader
 
-# Safe import for Windows printing modules
 win32api = None
 win32print = None
 if sys.platform == "win32":
@@ -15,7 +14,7 @@ if sys.platform == "win32":
         pass
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB limit
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
 @app.route('/')
 def index():
@@ -78,5 +77,5 @@ def print_multiple():
         return jsonify({'error': f'Printing failed: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
