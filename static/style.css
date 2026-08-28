@@ -16,8 +16,11 @@
 }
 
 body {
-    background: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.95)), url('https://images.unsplash.com/photo-1588236166929-e85df6495b6c?auto=format&fit=crop&w=1920&q=80') no-repeat center center fixed;
-    background-size: cover;
+    background: 
+        /* Pure CSS Campus & Tech Vector Background pattern to prevent any image external link loading failures */
+        radial-gradient(circle at 15% 20%, rgba(56, 189, 248, 0.15) 0%, transparent 35%),
+        radial-gradient(circle at 85% 80%, rgba(129, 140, 248, 0.15) 0%, transparent 35%),
+        linear-gradient(135deg, #060913 0%, #0f172a 100%);
     color: var(--text-color);
     min-height: 100vh;
     display: flex;
