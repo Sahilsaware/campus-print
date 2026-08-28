@@ -1,25 +1,25 @@
 import os
 import sys
 import tempfile
-from flask import Flask, render_template_string, request, jsonify
+from flask import Flask, render_template, request, jsonify
 from pypdf import PdfReader
 
-# Windows-specific printing imports
+# Safe import for Windows printing modules
+win32api = None
+win32print = None
 if sys.platform == "win32":
-    import win32api
-    import win32print
+    try:
+        import win32api
+        import win32print
+    except ImportError:
+        pass
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB limit
 
-# Kiosk Configuration
-PRICE_BW = 2.0
-PRICE_COLOR = 10.0
-DOUBLE_SIDED_DISCOUNT = 0.20  # 20% discount for double-sided
-
 @app.route('/')
 def index():
-    return render_template_string(HTML_TEMPLATE)
+    return render_template('index.html')
 
 @app.route('/count-multiple-pages', methods=['POST'])
 def count_multiple_pages():
@@ -52,9 +52,9 @@ def print_multiple():
     files = request.files.getlist('files')
     copies = int(request.form.get('copies', 1))
 
-    if sys.platform != "win32":
-        # Non-windows fallback simulation
-        return jsonify({'success': True, 'message': 'Simulated print success (Non-Windows platform)'})
+    # Check if Windows print drivers are loaded
+    if sys.platform != "win32" or not win32print:
+        return jsonify({'success': True, 'message': 'Simulated print success (Cloud/Non-Windows platform)'})
 
     try:
         printer_name = win32print.GetDefaultPrinter()
@@ -79,4 +79,5 @@ def print_multiple():
         return jsonify({'error': f'Printing failed: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
