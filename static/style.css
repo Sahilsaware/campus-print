@@ -27,7 +27,7 @@ body {
 
 .kiosk-container {
     width: 100%;
-    max-width: 650px;
+    max-width: 680px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -63,21 +63,21 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
+    margin-bottom: 25px;
     width: 100%;
-    padding: 0 10px;
+    padding: 0 5px;
 }
 
 .step-node {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
 }
 
 .step-node span {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: #334155;
     color: var(--text-muted);
@@ -85,12 +85,12 @@ body {
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    font-size: 14px;
+    font-size: 13px;
     transition: 0.3s;
 }
 
 .step-node label {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--text-muted);
 }
 
@@ -109,8 +109,8 @@ body {
     flex-grow: 1;
     height: 2px;
     background: #334155;
-    margin: 0 10px;
-    margin-bottom: 20px;
+    margin: 0 6px;
+    margin-bottom: 18px;
 }
 
 .step-content {
@@ -136,7 +136,7 @@ h2 {
 .info-text {
     color: var(--text-muted);
     font-size: 1rem;
-    line-height: 1.5;
+    line-height: 1.6;
 }
 
 .form-group {
@@ -150,7 +150,7 @@ label {
     font-size: 0.88rem;
 }
 
-input[type="number"], input[type="text"], select {
+input[type="file"], input[type="number"], input[type="text"], select {
     width: 100%;
     padding: 11px 14px;
     border-radius: 12px;
@@ -159,6 +159,11 @@ input[type="number"], input[type="text"], select {
     color: #fff;
     outline: none;
     font-size: 0.95rem;
+}
+
+input[type="file"] {
+    cursor: pointer;
+    padding: 12px;
 }
 
 .btn {
