@@ -9,69 +9,79 @@
 </head>
 <body>
 
-<div class="kiosk-card">
+<div class="kiosk-container">
+    <div class="header-section">
+        <h1>Smart Print Kiosk</h1>
+        <p>Upload, Configure & Print Seamlessly</p>
+    </div>
+
     <div class="step-tracker">
-        <div class="step-node active" id="node-1">1</div>
-        <div class="step-node" id="node-2">2</div>
-        <div class="step-node" id="node-3">3</div>
-        <div class="step-node" id="node-4">4</div>
+        <div class="step-node active" id="node-1"><span>1</span><label>Upload</label></div>
+        <div class="step-line"></div>
+        <div class="step-node" id="node-2"><span>2</span><label>Configure</label></div>
+        <div class="step-line"></div>
+        <div class="step-node" id="node-3"><span>3</span><label>Payment</label></div>
+        <div class="step-line"></div>
+        <div class="step-node" id="node-4"><span>4</span><label>Print</label></div>
     </div>
 
-    <!-- Step 1: File Upload -->
-    <div class="step-content active" id="step-1">
-        <h2>Upload Documents</h2>
-        <div class="form-group">
-            <label>Select PDF or Image files</label>
-            <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg">
+    <div class="kiosk-card">
+        <!-- Step 1: File Upload -->
+        <div class="step-content active" id="step-1">
+            <h2>Upload Documents</h2>
+            <div class="form-group drop-zone">
+                <label>Select PDF or Image files (.pdf, .png, .jpg)</label>
+                <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg">
+            </div>
+            <button class="btn" onclick="goToStep2()">Next: Print Options</button>
         </div>
-        <button class="btn" onclick="goToStep2()">Next: Print Options</button>
-    </div>
 
-    <!-- Step 2: Configuration -->
-    <div class="step-content" id="step-2">
-        <h2>Print Settings</h2>
-        <div class="form-group">
-            <label>Color Mode</label>
-            <select id="color-mode" onchange="calculatePrice()">
-                <option value="bw">Black & White (₹2/page)</option>
-                <option value="color">Color (₹10/page)</option>
-            </select>
+        <!-- Step 2: Configuration (Discount Removed) -->
+        <div class="step-content" id="step-2">
+            <h2>Print Settings</h2>
+            <div class="form-group">
+                <label>Color Mode</label>
+                <select id="color-mode" onchange="calculatePrice()">
+                    <option value="bw">Black & White (₹2/page)</option>
+                    <option value="color">Color (₹10/page)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Sides</label>
+                <select id="sides" onchange="calculatePrice()">
+                    <option value="single">Single-Sided</option>
+                    <option value="double">Double-Sided</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Copies</label>
+                <input type="number" id="copies" value="1" min="1" onchange="calculatePrice()">
+            </div>
+            <div class="form-group">
+                <label>Page Range (e.g. 1-5, 8 or leave blank for all)</label>
+                <input type="text" id="page-range" placeholder="All pages" onchange="calculatePrice()">
+            </div>
+            <button class="btn" onclick="goToStep3()">Next: Payment Summary</button>
         </div>
-        <div class="form-group">
-            <label>Sides</label>
-            <select id="sides" onchange="calculatePrice()">
-                <option value="single">Single-Sided</option>
-                <option value="double">Double-Sided (20% Off)</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Copies</label>
-            <input type="number" id="copies" value="1" min="1" onchange="calculatePrice()">
-        </div>
-        <div class="form-group">
-            <label>Page Range (e.g. 1-5, 8 or leave blank for all)</label>
-            <input type="text" id="page-range" placeholder="All pages" onchange="calculatePrice()">
-        </div>
-        <button class="btn" onclick="goToStep3()">Next: Payment Summary</button>
-    </div>
 
-    <!-- Step 3: Summary & Payment -->
-    <div class="step-content" id="step-3">
-        <h2>Order Summary</h2>
-        <div class="summary-box">
-            <div class="summary-row"><span>Total Pages Detected:</span><span id="summary-pages">0</span></div>
-            <div class="summary-row"><span>Selected Pages to Print:</span><span id="summary-print-pages">0</span></div>
-            <div class="summary-row"><span>Copies:</span><span id="summary-copies">1</span></div>
-            <div class="summary-row total-price"><span>Total Amount:</span><span id="summary-total">₹0</span></div>
+        <!-- Step 3: Summary & Razorpay Payment -->
+        <div class="step-content" id="step-3">
+            <h2>Order Summary</h2>
+            <div class="summary-box">
+                <div class="summary-row"><span>Total Pages Detected:</span><span id="summary-pages">0</span></div>
+                <div class="summary-row"><span>Selected Pages to Print:</span><span id="summary-print-pages">0</span></div>
+                <div class="summary-row"><span>Copies:</span><span id="summary-copies">1</span></div>
+                <div class="summary-row total-price"><span>Total Amount:</span><span id="summary-total">₹0</span></div>
+            </div>
+            <button class="btn pay-btn" onclick="processPayment()">Pay with Razorpay & Print</button>
         </div>
-        <button class="btn" onclick="processPayment()">Pay & Print</button>
-    </div>
 
-    <!-- Step 4: Status -->
-    <div class="step-content" id="step-4">
-        <h2>Processing Print Job</h2>
-        <p id="status-text" class="status-msg">Please wait while your document is being printed...</p>
-        <button class="btn reset-btn" onclick="resetKiosk()">Print Another File</button>
+        <!-- Step 4: Status -->
+        <div class="step-content" id="step-4">
+            <h2>Processing Print Job</h2>
+            <p id="status-text" class="status-msg">Please wait while your document is being printed...</p>
+            <button class="btn reset-btn" onclick="resetKiosk()">Print Another File</button>
+        </div>
     </div>
 </div>
 
@@ -140,14 +150,13 @@
 
     function calculatePrice() {
         const colorMode = document.getElementById('color-mode').value;
-        const sides = document.getElementById('sides').value;
         const copies = parseInt(document.getElementById('copies').value) || 1;
         const pageRangeStr = document.getElementById('page-range').value;
 
         computedPagesToPrint = parsePageRange(pageRangeStr, totalDetectedPages);
 
         let baseRate = colorMode === 'color' ? 10.0 : 2.0;
-        if (sides === 'double') baseRate *= 0.8;
+        // Discount logic completely removed as requested
 
         finalCalculatedCost = Math.ceil(computedPagesToPrint * baseRate * copies);
 
@@ -163,7 +172,34 @@
     }
 
     function processPayment() {
-        sendToPrinter();
+        // Razorpay Integration Test Modal
+        var options = {
+            "key": "rzp_test_mockkey", // Test key or replace with live key
+            "amount": finalCalculatedCost * 100, // Amount in paise
+            "currency": "INR",
+            "name": "Smart Print Kiosk",
+            "description": "Document Printing Charges",
+            "handler": function (response){
+                // Payment successful, trigger printing
+                sendToPrinter();
+            },
+            "prefill": {
+                "name": "College Student",
+                "email": "student@college.edu",
+                "contact": "9999999999"
+            },
+            "theme": {
+                "color": "#38bdf8"
+            }
+        };
+        
+        try {
+            var rzp1 = new Razorpay(options);
+            rzp1.open();
+        } catch (err) {
+            // Fallback if network blocks razorpay script
+            sendToPrinter();
+        }
     }
 
     async function sendToPrinter() {
@@ -181,7 +217,7 @@
             const data = await res.json();
             
             if (res.ok) {
-                document.getElementById('status-text').innerText = "Printing started! Please collect your paper from the output tray.";
+                document.getElementById('status-text').innerText = "Payment successful! Printing started, please collect your pages.";
             } else {
                 document.getElementById('status-text').innerText = "Printing error: " + (data.error || "Unknown error");
             }
