@@ -1,12 +1,13 @@
 :root {
-    --bg-color: #0b0f19;
-    --card-bg: rgba(22, 31, 48, 0.7);
-    --border-color: rgba(255, 255, 255, 0.08);
-    --primary: #6366f1;
+    --bg-dark: #0b0f19;
+    --card-bg: #131b2e;
+    --card-border: #1e293b;
+    --primary-blue: #6366f1;
     --primary-hover: #4f46e5;
-    --text-main: #f3f4f6;
-    --text-muted: #9ca3af;
-    --accent: #10b981;
+    --accent-green: #10b981;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --box-inactive: #1a233a;
 }
 
 * {
@@ -17,244 +18,257 @@
 }
 
 body {
-    background-color: var(--bg-color);
-    color: var(--text-main);
-    min-height: 100vh;
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
     display: flex;
     justify-content: center;
-    align-items: center;
-    padding: 20px;
+    padding: 40px 20px;
+    min-height: 100vh;
 }
 
-.background-glow {
-    position: fixed;
-    width: 300px;
-    height: 300px;
-    background: radial-gradient(circle, rgba(99,102,241,0.25) 0%, rgba(0,0,0,0) 70%);
-    top: 20%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: -1;
-}
-
-.app-container {
+.main-container {
     width: 100%;
-    max-width: 480px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+    max-width: 580px;
 }
 
-.brand-header {
+.header {
     text-align: center;
-    margin-bottom: 8px;
+    margin-bottom: 28px;
 }
 
 .logo {
-    font-size: 1.8rem;
+    font-size: 32px;
     font-weight: 800;
-    letter-spacing: -0.5px;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
 
 .logo span {
-    color: var(--primary);
+    color: var(--primary-blue);
 }
 
-.tagline {
-    font-size: 0.85rem;
-    color: var(--text-muted);
+.subtitle {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-top: 4px;
 }
 
 .card {
     background: var(--card-bg);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--border-color);
-    border-radius: 16px;
-    padding: 20px;
-    position: relative;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 20px;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.card-header h2 {
+    font-size: 20px;
+    font-weight: 700;
 }
 
 .step-badge {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    font-size: 0.7rem;
+    background: #1e293b;
+    color: var(--text-secondary);
+    font-size: 11px;
     font-weight: 700;
-    text-transform: uppercase;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 4px 8px;
-    border-radius: 6px;
-    color: var(--text-muted);
-}
-
-h2 {
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin-bottom: 16px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    letter-spacing: 0.5px;
 }
 
 .drop-zone {
-    border: 2px dashed rgba(255, 255, 255, 0.15);
-    border-radius: 12px;
-    padding: 24px;
+    border: 2px dashed #2d3748;
+    border-radius: 14px;
+    padding: 36px 20px;
     text-align: center;
+    display: block;
     cursor: pointer;
+    background: rgba(15, 23, 42, 0.4);
     transition: all 0.2s ease;
 }
 
 .drop-zone:hover {
-    border-color: var(--primary);
+    border-color: var(--primary-blue);
     background: rgba(99, 102, 241, 0.05);
 }
 
 .upload-icon {
-    font-size: 2.2rem;
-    margin-bottom: 8px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
 }
 
-.upload-title {
-    font-weight: 600;
-    font-size: 0.95rem;
+.drop-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 4px;
 }
 
-.upload-sub {
-    font-size: 0.8rem;
-    color: var(--text-muted);
+.drop-sub {
+    font-size: 13px;
+    color: var(--text-secondary);
 }
 
-.browse-btn {
-    color: var(--primary);
+.browse-link {
+    color: var(--primary-blue);
     text-decoration: underline;
 }
 
-.file-info {
-    margin-top: 10px;
-    font-size: 0.85rem;
-    color: var(--accent);
-    font-weight: 600;
+.file-list {
+    margin-top: 12px;
 }
 
-.option-group {
-    margin-bottom: 16px;
+.file-item {
+    font-size: 13px;
+    color: var(--text-primary);
+    padding: 6px 12px;
+    background: var(--box-inactive);
+    border-radius: 8px;
+    margin-top: 6px;
 }
 
-.option-group:last-child {
-    margin-bottom: 0;
+.field-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+
 }
 
-.group-label {
-    display: block;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text-muted);
-    margin-bottom: 8px;
-    text-transform: uppercase;
-}
-
-.toggle-grid {
+.grid-2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 14px;
+    margin-bottom: 20px;
 }
 
-.toggle-card input {
-    display: none;
-}
-
-.toggle-content {
-    border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: 10px;
-    padding: 12px;
+.select-box {
+    background: var(--box-inactive);
+    border: 1.5px solid var(--card-border);
+    border-radius: 14px;
+    padding: 16px;
     cursor: pointer;
     transition: all 0.2s ease;
-    display: flex;
-    flex-direction: column;
 }
 
-.toggle-content .title {
-    font-size: 0.9rem;
-    font-weight: 600;
+.select-box.active {
+    border-color: var(--primary-blue);
+    background: rgba(99, 102, 241, 0.12);
 }
 
-.toggle-content .desc {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    margin-top: 2px;
+.box-title {
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 4px;
 }
 
-.toggle-card input:checked + .toggle-content {
-    border-color: var(--primary);
-    background: rgba(99, 102, 241, 0.15);
+.box-sub {
+    font-size: 12px;
+    color: var(--text-secondary);
 }
 
-.quantity-control {
+.counter-box {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 16px;
 }
 
-.quantity-control button {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text-main);
-    font-size: 1.2rem;
+.counter-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: var(--box-inactive);
+    border: 1px solid var(--card-border);
+    color: var(--text-primary);
+    font-size: 20px;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.quantity-control input {
-    width: 50px;
-    text-align: center;
-    background: transparent;
-    border: none;
-    color: var(--text-main);
-    font-size: 1.1rem;
+.counter-btn:hover {
+    background: var(--card-border);
+}
+
+.counter-value {
+    font-size: 18px;
     font-weight: 700;
+    width: 24px;
+    text-align: center;
 }
 
-.summary-details {
-    margin-bottom: 16px;
+.input-text {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--box-inactive);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    color: var(--text-primary);
+    outline: none;
+}
+
+.input-text:focus {
+    border-color: var(--primary-blue);
+}
+
+.summary-card {
+    background: var(--card-bg);
 }
 
 .summary-row {
     display: flex;
     justify-content: space-between;
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    margin-bottom: 6px;
+    align-items: center;
+    font-size: 15px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
 }
 
-.total-row {
-    font-size: 1.1rem;
+.summary-row .val {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.main-total {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--card-border);
+    color: var(--text-primary);
+    font-size: 18px;
     font-weight: 700;
-    color: var(--text-main);
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid var(--border-color);
 }
 
-.total-price {
-    color: var(--accent);
-    font-size: 1.3rem;
+.amount {
+    color: var(--accent-green);
+    font-size: 24px;
+    font-weight: 800;
 }
 
-.pay-btn {
+.btn-primary {
     width: 100%;
-    padding: 14px;
-    border: none;
-    border-radius: 12px;
-    background: var(--primary);
+    background: var(--primary-blue);
     color: white;
-    font-size: 1rem;
+    border: none;
+    padding: 16px;
+    border-radius: 14px;
+    font-size: 16px;
     font-weight: 700;
     cursor: pointer;
+    margin-top: 16px;
     transition: background 0.2s ease;
 }
 
-.pay-btn:hover {
+.btn-primary:hover {
     background: var(--primary-hover);
 }
