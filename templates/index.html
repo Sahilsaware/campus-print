@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Print Kiosk</title>
+    <title>Campus Print</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
@@ -11,11 +11,9 @@
 
 <div class="kiosk-container">
     <div class="header-section">
-        <h1>Smart Print Kiosk</h1>
-        <p>Self-Service Campus Document Printing System</p>
+        <h1>Campus Print</h1>
     </div>
 
-    <!-- 5-Step Tracker Bar -->
     <div class="step-tracker">
         <div class="step-node active" id="node-1"><span>1</span><label>Home</label></div>
         <div class="step-line"></div>
@@ -29,32 +27,29 @@
     </div>
 
     <div class="kiosk-card">
-        <!-- Step 1: Home / Info -->
         <div class="step-content active" id="step-1">
-            <h2>Welcome to Smart Print Kiosk</h2>
-            <p class="info-text">Fast, secure, and hassle-free printing for students and staff. Upload your files, customize your layout, pay securely via Razorpay, and collect your prints instantly.</p>
-            <button class="btn" onclick="setStep(2)" style="margin-top: 30px;">Next: Upload Document</button>
+            <h2 class="styled-heading">Welcome to Campus Print</h2>
+            <p class="info-text">Fast and secure printing for students. Upload, customize, and collect instantly.</p>
+            <button class="btn" onclick="setStep(2)" style="margin-top: 30px;">Next</button>
         </div>
 
-        <!-- Step 2: Separate Upload Tab -->
         <div class="step-content" id="step-2">
-            <h2>Upload Document</h2>
-            <p class="info-text">Select your PDF or Image documents to begin printing.</p>
+            <h2 class="styled-heading">📁 Upload Document</h2>
+            <p class="info-text">Supported formats: PDF, JPG, PNG, Word, PPT</p>
             
             <div class="form-group" style="margin-top: 20px;">
-                <label>Choose PDF, PNG, or JPG files</label>
-                <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg">
+                <label>Select your files to print</label>
+                <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.ppt,.pptx">
             </div>
 
             <div class="btn-row" style="margin-top: 30px;">
                 <button class="btn secondary-btn" onclick="setStep(1)">Back</button>
-                <button class="btn" onclick="handleFileUploadAndNext()">Next: Print Settings</button>
+                <button class="btn" onclick="handleFileUploadAndNext()">Next</button>
             </div>
         </div>
 
-        <!-- Step 3: Print Settings (Advanced Printer Dialogue Options) -->
         <div class="step-content" id="step-3">
-            <h2>Print Settings</h2>
+            <h2 class="styled-heading">⚙️ Print Settings</h2>
             
             <div class="form-group">
                 <label>Color Mode</label>
@@ -67,9 +62,7 @@
             <div class="form-group">
                 <label>Paper Size</label>
                 <select id="paper-size">
-                    <option value="A4">A4 (210 x 297 mm)</option>
-                    <option value="Letter">Letter (8.5 x 11 in)</option>
-                    <option value="Legal">Legal (8.5 x 14 in)</option>
+                    <option value="A4">A4 Size</option>
                 </select>
             </div>
 
@@ -104,19 +97,18 @@
             </div>
 
             <div class="form-group">
-                <label>Page Range (e.g., 1-5, 8 or leave blank for all)</label>
+                <label>Page Range (e.g., 1-5 or leave blank for all)</label>
                 <input type="text" id="page-range" placeholder="All pages" onchange="calculatePrice()">
             </div>
 
             <div class="btn-row">
                 <button class="btn secondary-btn" onclick="setStep(2)">Back</button>
-                <button class="btn" onclick="goToStep4()">Next: Order Summary</button>
+                <button class="btn" onclick="goToStep4()">Next</button>
             </div>
         </div>
 
-        <!-- Step 4: Summary & Razorpay Payment Tab -->
         <div class="step-content" id="step-4">
-            <h2>Order Summary & Payment</h2>
+            <h2 class="styled-heading">💳 Order Summary & Payment</h2>
             <div class="summary-box">
                 <div class="summary-row"><span>Total Pages Detected:</span><span id="summary-pages">0</span></div>
                 <div class="summary-row"><span>Selected Pages to Print:</span><span id="summary-print-pages">0</span></div>
@@ -126,14 +118,16 @@
             
             <div class="btn-row">
                 <button class="btn secondary-btn" onclick="setStep(3)">Back</button>
-                <button class="btn pay-btn" onclick="processPayment()">Pay with Razorpay</button>
+                <button class="btn pay-btn" onclick="processPayment()">Proceed to Payment</button>
             </div>
         </div>
 
-        <!-- Step 5: Status / Print Output -->
         <div class="step-content" id="step-5">
-            <h2>Processing Print Job</h2>
-            <p id="status-text" class="status-msg">Please wait while your document is being printed...</p>
+            <h2 class="styled-heading">🖨️ Print Status</h2>
+            <div class="printing-loader">
+                <div class="spinner"></div>
+                <p id="status-text" class="status-msg">Printing process is active. Your job is securely in the queue...</p>
+            </div>
             <button class="btn reset-btn" onclick="resetKiosk()">Print Another File</button>
         </div>
     </div>
@@ -172,7 +166,7 @@
             if (res.ok) {
                 totalDetectedPages = data.total_pages;
                 calculatePrice();
-                setStep(3); // Move to Settings tab
+                setStep(3);
             } else {
                 alert(data.error || 'Failed to analyze files.');
             }
@@ -229,12 +223,11 @@
             return;
         }
 
-        // Standard Razorpay Test Options with correct test key structure
         var options = {
-            "key": "rzp_test_Kz123456789abc", 
-            "amount": finalCalculatedCost * 100, // Amount in paise
+            "key": "rzp_test_TURAyEBXgKmNLg", 
+            "amount": finalCalculatedCost * 100, 
             "currency": "INR",
-            "name": "Smart Print Kiosk",
+            "name": "Campus Print",
             "description": "Document Printing Fee",
             "handler": function (response){
                 sendToPrinter();
@@ -245,8 +238,8 @@
                 }
             },
             "prefill": {
-                "name": "College Student",
-                "email": "student@college.edu",
+                "name": "Student",
+                "email": "student@campus.edu",
                 "contact": "9999999999"
             },
             "theme": {
@@ -268,6 +261,8 @@
 
     async function sendToPrinter() {
         setStep(5);
+        document.getElementById('status-text').innerText = "Printing process active. Secure queue handling your job...";
+        
         const files = document.getElementById('file-input').files;
         const formData = new FormData();
         
@@ -281,7 +276,7 @@
             const data = await res.json();
             
             if (res.ok) {
-                document.getElementById('status-text').innerText = "Payment successful & Printing started! Please collect your pages from the tray.";
+                document.getElementById('status-text').innerText = "Payment successful & Print job completed! Please collect your documents safely from the tray.";
             } else {
                 document.getElementById('status-text').innerText = "Printing error: " + (data.error || "Unknown error");
             }
