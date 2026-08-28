@@ -129,40 +129,41 @@ body {
 
 h2 {
     font-size: 1.5rem;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     color: #fff;
 }
 
+.info-text {
+    color: var(--text-muted);
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
 .form-group {
-    margin-bottom: 20px;
+    margin-bottom: 18px;
 }
 
 label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     color: var(--text-muted);
-    font-size: 0.9rem;
+    font-size: 0.88rem;
 }
 
-input[type="file"], input[type="number"], input[type="text"], select {
+input[type="number"], input[type="text"], select {
     width: 100%;
-    padding: 12px 16px;
+    padding: 11px 14px;
     border-radius: 12px;
     border: 1px solid var(--border-color);
     background: rgba(15, 23, 42, 0.7);
     color: #fff;
     outline: none;
-    font-size: 1rem;
-}
-
-input[type="file"] {
-    padding: 10px;
-    cursor: pointer;
+    font-size: 0.95rem;
 }
 
 .btn {
     width: 100%;
-    padding: 14px;
+    padding: 13px;
     border: none;
     border-radius: 12px;
     background: var(--accent-color);
@@ -177,6 +178,21 @@ input[type="file"] {
 .btn:hover {
     background: var(--accent-hover);
     color: #fff;
+}
+
+.btn-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.secondary-btn {
+    background: #334155;
+    color: #fff;
+}
+
+.secondary-btn:hover {
+    background: #475569;
 }
 
 .summary-box {
