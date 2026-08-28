@@ -12,33 +12,48 @@
 <div class="kiosk-container">
     <div class="header-section">
         <h1>Smart Print Kiosk</h1>
-        <p>Self-Service Document Printing System</p>
+        <p>Self-Service Campus Document Printing System</p>
     </div>
 
+    <!-- 5-Step Tracker Bar -->
     <div class="step-tracker">
         <div class="step-node active" id="node-1"><span>1</span><label>Home</label></div>
         <div class="step-line"></div>
-        <div class="step-node" id="node-2"><span>2</span><label>Settings</label></div>
+        <div class="step-node" id="node-2"><span>2</span><label>Upload</label></div>
         <div class="step-line"></div>
-        <div class="step-node" id="node-3"><span>3</span><label>Payment</label></div>
+        <div class="step-node" id="node-3"><span>3</span><label>Settings</label></div>
         <div class="step-line"></div>
-        <div class="step-node" id="node-4"><span>4</span><label>Print</label></div>
+        <div class="step-node" id="node-4"><span>4</span><label>Payment</label></div>
+        <div class="step-line"></div>
+        <div class="step-node" id="node-5"><span>5</span><label>Print</label></div>
     </div>
 
     <div class="kiosk-card">
-        <!-- Step 1: Info & Upload Trigger -->
+        <!-- Step 1: Home / Info -->
         <div class="step-content active" id="step-1">
-            <h2>Welcome to Print Kiosk</h2>
-            <p class="info-text">Easily print your PDF and image documents in seconds. Click below to select your files and get started.</p>
+            <h2>Welcome to Smart Print Kiosk</h2>
+            <p class="info-text">Fast, secure, and hassle-free printing for students and staff. Upload your files, customize your layout, pay securely via Razorpay, and collect your prints instantly.</p>
+            <button class="btn" onclick="setStep(2)" style="margin-top: 30px;">Next: Upload Document</button>
+        </div>
+
+        <!-- Step 2: Separate Upload Tab -->
+        <div class="step-content" id="step-2">
+            <h2>Upload Document</h2>
+            <p class="info-text">Select your PDF or Image documents to begin printing.</p>
             
-            <div class="form-group" style="margin-top: 30px;">
-                <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg" style="display: none;" onchange="handleFileSelection()">
-                <button class="btn" onclick="document.getElementById('file-input').click()">📁 Upload Document</button>
+            <div class="form-group" style="margin-top: 20px;">
+                <label>Choose PDF, PNG, or JPG files</label>
+                <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg">
+            </div>
+
+            <div class="btn-row" style="margin-top: 30px;">
+                <button class="btn secondary-btn" onclick="setStep(1)">Back</button>
+                <button class="btn" onclick="handleFileUploadAndNext()">Next: Print Settings</button>
             </div>
         </div>
 
-        <!-- Step 2: Advanced Print Settings (Real Printer Dialogue Options + Back Button) -->
-        <div class="step-content" id="step-2">
+        <!-- Step 3: Print Settings (Advanced Printer Dialogue Options) -->
+        <div class="step-content" id="step-3">
             <h2>Print Settings</h2>
             
             <div class="form-group">
@@ -94,14 +109,14 @@
             </div>
 
             <div class="btn-row">
-                <button class="btn secondary-btn" onclick="setStep(1)">Back</button>
-                <button class="btn" onclick="goToStep3()">Next: Summary</button>
+                <button class="btn secondary-btn" onclick="setStep(2)">Back</button>
+                <button class="btn" onclick="goToStep4()">Next: Order Summary</button>
             </div>
         </div>
 
-        <!-- Step 3: Summary & Fixed Razorpay Payment -->
-        <div class="step-content" id="step-3">
-            <h2>Order Summary</h2>
+        <!-- Step 4: Summary & Razorpay Payment Tab -->
+        <div class="step-content" id="step-4">
+            <h2>Order Summary & Payment</h2>
             <div class="summary-box">
                 <div class="summary-row"><span>Total Pages Detected:</span><span id="summary-pages">0</span></div>
                 <div class="summary-row"><span>Selected Pages to Print:</span><span id="summary-print-pages">0</span></div>
@@ -110,13 +125,13 @@
             </div>
             
             <div class="btn-row">
-                <button class="btn secondary-btn" onclick="setStep(2)">Back</button>
-                <button class="btn pay-btn" onclick="processPayment()">Pay with Razorpay & Print</button>
+                <button class="btn secondary-btn" onclick="setStep(3)">Back</button>
+                <button class="btn pay-btn" onclick="processPayment()">Pay with Razorpay</button>
             </div>
         </div>
 
-        <!-- Step 4: Status -->
-        <div class="step-content" id="step-4">
+        <!-- Step 5: Status / Print Output -->
+        <div class="step-content" id="step-5">
             <h2>Processing Print Job</h2>
             <p id="status-text" class="status-msg">Please wait while your document is being printed...</p>
             <button class="btn reset-btn" onclick="resetKiosk()">Print Another File</button>
@@ -139,9 +154,12 @@
         }
     }
 
-    async function handleFileSelection() {
+    async function handleFileUploadAndNext() {
         const files = document.getElementById('file-input').files;
-        if (files.length === 0) return;
+        if (files.length === 0) {
+            alert('Please select at least one file before proceeding.');
+            return;
+        }
 
         const formData = new FormData();
         for (let i = 0; i < files.length; i++) {
@@ -154,7 +172,7 @@
             if (res.ok) {
                 totalDetectedPages = data.total_pages;
                 calculatePrice();
-                setStep(2); // Automatically move to settings after file selection
+                setStep(3); // Move to Settings tab
             } else {
                 alert(data.error || 'Failed to analyze files.');
             }
@@ -200,21 +218,21 @@
         document.getElementById('summary-total').innerText = `₹${finalCalculatedCost}`;
     }
 
-    function goToStep3() {
+    function goToStep4() {
         calculatePrice();
-        setStep(3);
+        setStep(4);
     }
 
     function processPayment() {
-        // Correct Razorpay integration setup with fallback
         if (finalCalculatedCost <= 0) {
             sendToPrinter();
             return;
         }
 
+        // Standard Razorpay Test Options with correct test key structure
         var options = {
-            "key": "rzp_test_1234567890abcdef", // Valid test format string
-            "amount": finalCalculatedCost * 100, 
+            "key": "rzp_test_Kz123456789abc", 
+            "amount": finalCalculatedCost * 100, // Amount in paise
             "currency": "INR",
             "name": "Smart Print Kiosk",
             "description": "Document Printing Fee",
@@ -223,7 +241,7 @@
             },
             "modal": {
                 "ondismiss": function(){
-                    // Optional: handle if user closes popup
+                    console.log('Payment modal closed by user');
                 }
             },
             "prefill": {
@@ -239,18 +257,17 @@
         try {
             var rzp1 = new Razorpay(options);
             rzp1.on('payment.failed', function (response){
-                alert("Payment failed: " + response.error.description);
+                alert("Payment Failed: " + response.error.description);
             });
             rzp1.open();
         } catch (err) {
-            // Fallback if network blocks or script fails to load
-            console.warn("Razorpay popup failed, proceeding via direct print trigger.");
+            console.warn("Razorpay script error, triggering direct print fallback.");
             sendToPrinter();
         }
     }
 
     async function sendToPrinter() {
-        setStep(4);
+        setStep(5);
         const files = document.getElementById('file-input').files;
         const formData = new FormData();
         
@@ -264,7 +281,7 @@
             const data = await res.json();
             
             if (res.ok) {
-                document.getElementById('status-text').innerText = "Payment & Print successful! Please collect your pages from the tray.";
+                document.getElementById('status-text').innerText = "Payment successful & Printing started! Please collect your pages from the tray.";
             } else {
                 document.getElementById('status-text').innerText = "Printing error: " + (data.error || "Unknown error");
             }
