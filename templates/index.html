@@ -28,39 +28,13 @@
     </div>
 
     <div class="kiosk-card">
-        <!-- Step 1: Home / Info -->
-        <div class="step-content active" id="step-1">
-            <div class="hero-image-container">
-                <!-- Theme matched Blue & Dark Vector Printer & Document Graphic -->
-                <svg class="hero-svg" viewBox="0 0 260 150" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Glow background effect -->
-                    <ellipse cx="130" cy="135" rx="70" ry="10" fill="#38bdf8" opacity="0.25" filter="blur(6px)"/>
-                    <!-- Printer Main Body -->
-                    <rect x="45" y="55" width="170" height="75" rx="14" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5"/>
-                    <!-- Paper Tray Input Slot -->
-                    <path d="M75 55V32C75 26.4772 79.4772 22 85 22H175C180.523 22 185 26.4772 185 32V55" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4 4"/>
-                    <!-- Document entering printer -->
-                    <rect x="100" y="28" width="60" height="35" rx="4" fill="#f8fafc" opacity="0.9"/>
-                    <rect x="108" y="36" width="35" height="3" rx="1.5" fill="#0f172a"/>
-                    <rect x="108" y="44" width="44" height="2" rx="1" fill="#38bdf8"/>
-                    <!-- Printed Paper Output Tray -->
-                    <path d="M80 105H180V132C180 134.761 177.761 137 175 137H85C82.2386 137 80 134.761 80 132V105Z" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
-                    <!-- Document lines on output -->
-                    <rect x="94" y="113" width="72" height="3" rx="1.5" fill="#f8fafc" opacity="0.8"/>
-                    <rect x="94" y="121" width="48" height="3" rx="1.5" fill="#38bdf8"/>
-                    <!-- LED Screen & Status Lights -->
-                    <rect x="155" y="70" width="40" height="18" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1"/>
-                    <circle cx="166" cy="79" r="3.5" fill="#38bdf8"/>
-                    <circle cx="182" cy="79" r="3.5" fill="#10b981"/>
-                    <!-- Control Buttons -->
-                    <circle cx="65" cy="80" r="4" fill="#38bdf8"/>
-                    <circle cx="65" cy="95" r="4" fill="#475569"/>
-                </svg>
+        <!-- Step 1: Home / Info with realistic background printing image -->
+        <div class="step-content active step-1-bg" id="step-1">
+            <div class="step-1-overlay">
+                <h2 class="styled-heading">Welcome to Campus Print</h2>
+                <p class="info-text">Fast and secure printing for students. Upload, customize, and collect instantly.</p>
+                <button class="btn" onclick="setStep(2)" style="margin-top: 30px;">Next</button>
             </div>
-
-            <h2 class="styled-heading">Welcome to Campus Print</h2>
-            <p class="info-text">Fast and secure printing for students. Upload, customize, and collect instantly.</p>
-            <button class="btn" onclick="setStep(2)" style="margin-top: 25px;">Next</button>
         </div>
 
         <!-- Step 2: Separate Upload Tab -->
@@ -166,19 +140,6 @@
         </div>
     </div>
 </div>
-
-<style>
-.hero-image-container {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 18px;
-}
-.hero-svg {
-    width: 175px;
-    height: 105px;
-    filter: drop-shadow(0 8px 16px rgba(56, 189, 248, 0.25));
-}
-</style>
 
 <script>
     let totalDetectedPages = 0;
