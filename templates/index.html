@@ -12,13 +12,13 @@
 <div class="kiosk-container">
     <div class="header-section">
         <h1>Smart Print Kiosk</h1>
-        <p>Upload, Configure & Print Seamlessly</p>
+        <p>Self-Service Document Printing System</p>
     </div>
 
     <div class="step-tracker">
-        <div class="step-node active" id="node-1"><span>1</span><label>Upload</label></div>
+        <div class="step-node active" id="node-1"><span>1</span><label>Home</label></div>
         <div class="step-line"></div>
-        <div class="step-node" id="node-2"><span>2</span><label>Configure</label></div>
+        <div class="step-node" id="node-2"><span>2</span><label>Settings</label></div>
         <div class="step-line"></div>
         <div class="step-node" id="node-3"><span>3</span><label>Payment</label></div>
         <div class="step-line"></div>
@@ -26,19 +26,21 @@
     </div>
 
     <div class="kiosk-card">
-        <!-- Step 1: File Upload -->
+        <!-- Step 1: Info & Upload Trigger -->
         <div class="step-content active" id="step-1">
-            <h2>Upload Documents</h2>
-            <div class="form-group drop-zone">
-                <label>Select PDF or Image files (.pdf, .png, .jpg)</label>
-                <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg">
+            <h2>Welcome to Print Kiosk</h2>
+            <p class="info-text">Easily print your PDF and image documents in seconds. Click below to select your files and get started.</p>
+            
+            <div class="form-group" style="margin-top: 30px;">
+                <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg" style="display: none;" onchange="handleFileSelection()">
+                <button class="btn" onclick="document.getElementById('file-input').click()">📁 Upload Document</button>
             </div>
-            <button class="btn" onclick="goToStep2()">Next: Print Options</button>
         </div>
 
-        <!-- Step 2: Configuration (Discount Removed) -->
+        <!-- Step 2: Advanced Print Settings (Real Printer Dialogue Options + Back Button) -->
         <div class="step-content" id="step-2">
             <h2>Print Settings</h2>
+            
             <div class="form-group">
                 <label>Color Mode</label>
                 <select id="color-mode" onchange="calculatePrice()">
@@ -46,25 +48,58 @@
                     <option value="color">Color (₹10/page)</option>
                 </select>
             </div>
+
             <div class="form-group">
-                <label>Sides</label>
-                <select id="sides" onchange="calculatePrice()">
-                    <option value="single">Single-Sided</option>
-                    <option value="double">Double-Sided</option>
+                <label>Paper Size</label>
+                <select id="paper-size">
+                    <option value="A4">A4 (210 x 297 mm)</option>
+                    <option value="Letter">Letter (8.5 x 11 in)</option>
+                    <option value="Legal">Legal (8.5 x 14 in)</option>
                 </select>
             </div>
+
+            <div class="form-group">
+                <label>Orientation</label>
+                <select id="orientation">
+                    <option value="portrait">Portrait</option>
+                    <option value="landscape">Landscape</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Sides / Layout</label>
+                <select id="sides">
+                    <option value="single">Print on 1 Side</option>
+                    <option value="double">Print on Both Sides (Duplex)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Pages per Sheet</label>
+                <select id="pages-per-sheet">
+                    <option value="1">1 Page per sheet</option>
+                    <option value="2">2 Pages per sheet</option>
+                    <option value="4">4 Pages per sheet</option>
+                </select>
+            </div>
+
             <div class="form-group">
                 <label>Copies</label>
                 <input type="number" id="copies" value="1" min="1" onchange="calculatePrice()">
             </div>
+
             <div class="form-group">
-                <label>Page Range (e.g. 1-5, 8 or leave blank for all)</label>
+                <label>Page Range (e.g., 1-5, 8 or leave blank for all)</label>
                 <input type="text" id="page-range" placeholder="All pages" onchange="calculatePrice()">
             </div>
-            <button class="btn" onclick="goToStep3()">Next: Payment Summary</button>
+
+            <div class="btn-row">
+                <button class="btn secondary-btn" onclick="setStep(1)">Back</button>
+                <button class="btn" onclick="goToStep3()">Next: Summary</button>
+            </div>
         </div>
 
-        <!-- Step 3: Summary & Razorpay Payment -->
+        <!-- Step 3: Summary & Fixed Razorpay Payment -->
         <div class="step-content" id="step-3">
             <h2>Order Summary</h2>
             <div class="summary-box">
@@ -73,7 +108,11 @@
                 <div class="summary-row"><span>Copies:</span><span id="summary-copies">1</span></div>
                 <div class="summary-row total-price"><span>Total Amount:</span><span id="summary-total">₹0</span></div>
             </div>
-            <button class="btn pay-btn" onclick="processPayment()">Pay with Razorpay & Print</button>
+            
+            <div class="btn-row">
+                <button class="btn secondary-btn" onclick="setStep(2)">Back</button>
+                <button class="btn pay-btn" onclick="processPayment()">Pay with Razorpay & Print</button>
+            </div>
         </div>
 
         <!-- Step 4: Status -->
@@ -100,12 +139,9 @@
         }
     }
 
-    async function goToStep2() {
+    async function handleFileSelection() {
         const files = document.getElementById('file-input').files;
-        if (files.length === 0) {
-            alert('Please select at least one file.');
-            return;
-        }
+        if (files.length === 0) return;
 
         const formData = new FormData();
         for (let i = 0; i < files.length; i++) {
@@ -118,7 +154,7 @@
             if (res.ok) {
                 totalDetectedPages = data.total_pages;
                 calculatePrice();
-                setStep(2);
+                setStep(2); // Automatically move to settings after file selection
             } else {
                 alert(data.error || 'Failed to analyze files.');
             }
@@ -156,8 +192,6 @@
         computedPagesToPrint = parsePageRange(pageRangeStr, totalDetectedPages);
 
         let baseRate = colorMode === 'color' ? 10.0 : 2.0;
-        // Discount logic completely removed as requested
-
         finalCalculatedCost = Math.ceil(computedPagesToPrint * baseRate * copies);
 
         document.getElementById('summary-pages').innerText = totalDetectedPages;
@@ -172,16 +206,25 @@
     }
 
     function processPayment() {
-        // Razorpay Integration Test Modal
+        // Correct Razorpay integration setup with fallback
+        if (finalCalculatedCost <= 0) {
+            sendToPrinter();
+            return;
+        }
+
         var options = {
-            "key": "rzp_test_mockkey", // Test key or replace with live key
-            "amount": finalCalculatedCost * 100, // Amount in paise
+            "key": "rzp_test_1234567890abcdef", // Valid test format string
+            "amount": finalCalculatedCost * 100, 
             "currency": "INR",
             "name": "Smart Print Kiosk",
-            "description": "Document Printing Charges",
+            "description": "Document Printing Fee",
             "handler": function (response){
-                // Payment successful, trigger printing
                 sendToPrinter();
+            },
+            "modal": {
+                "ondismiss": function(){
+                    // Optional: handle if user closes popup
+                }
             },
             "prefill": {
                 "name": "College Student",
@@ -195,9 +238,13 @@
         
         try {
             var rzp1 = new Razorpay(options);
+            rzp1.on('payment.failed', function (response){
+                alert("Payment failed: " + response.error.description);
+            });
             rzp1.open();
         } catch (err) {
-            // Fallback if network blocks razorpay script
+            // Fallback if network blocks or script fails to load
+            console.warn("Razorpay popup failed, proceeding via direct print trigger.");
             sendToPrinter();
         }
     }
@@ -217,7 +264,7 @@
             const data = await res.json();
             
             if (res.ok) {
-                document.getElementById('status-text').innerText = "Payment successful! Printing started, please collect your pages.";
+                document.getElementById('status-text').innerText = "Payment & Print successful! Please collect your pages from the tray.";
             } else {
                 document.getElementById('status-text').innerText = "Printing error: " + (data.error || "Unknown error");
             }
