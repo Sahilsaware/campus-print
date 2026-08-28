@@ -39,13 +39,16 @@ body {
 .step-tracker {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     margin-bottom: 30px;
     position: relative;
+    width: 100%;
+    padding: 0 20px;
 }
 
 .step-node {
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
     background: #334155;
     display: flex;
@@ -53,6 +56,7 @@ body {
     justify-content: center;
     font-weight: bold;
     font-size: 14px;
+    position: relative;
     z-index: 2;
     transition: 0.3s;
 }
