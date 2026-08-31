@@ -1,11 +1,17 @@
 import os
-import win32api
-import win32print
 import tkinter as tk
 from tkinter import messagebox
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pypdf import PdfReader
+
+# Windows-only libraries safety check for Linux Cloud Servers (Render)
+try:
+    import win32api
+    import win32print
+    IS_WINDOWS = True
+except ImportError:
+    IS_WINDOWS = False
 
 app = Flask(__name__)
 CORS(app)
@@ -13,7 +19,7 @@ CORS(app)
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# 1. Page Counter Endpoint for Frontend
+# 1. Page Counter Endpoint
 @app.route('/count-multiple-pages', methods=['POST'])
 def count_multiple_pages():
     if 'files' not in request.files:
@@ -31,26 +37,33 @@ def count_multiple_pages():
                 reader = PdfReader(filepath)
                 total_pages += len(reader.pages)
             except Exception:
-                # Non-PDF files default to 1 page
                 total_pages += 1
 
     return jsonify({'total_pages': total_pages})
 
 # 2. PC Screen Permission Pop-Up Box
 def ask_print_confirmation(filename, copies):
-    root = tk.Tk()
-    root.withdraw()
-    root.attributes("-topmost", True)
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
 
-    response = messagebox.askyesno(
-        "🖨️ Campus Print - Permission Needed",
-        f"New Print Job Received!\n\n📄 File: {filename}\n📑 Copies: {copies}\n\nDo you want to print this document now?"
-    )
-    root.destroy()
-    return response
+        response = messagebox.askyesno(
+            "🖨️ Campus Print - Permission Needed",
+            f"New Print Job Received!\n\n📄 File: {filename}\n📑 Copies: {copies}\n\nDo you want to print this document now?"
+        )
+        root.destroy()
+        return response
+    except Exception as e:
+        print("GUI Notification error:", str(e))
+        return True
 
 # 3. Windows Default Printer Execution
 def print_to_windows_printer(filepath, copies):
+    if not IS_WINDOWS:
+        print("Running on Linux/Cloud Server - Simulated Print Execution.")
+        return True
+        
     try:
         default_printer = win32print.GetDefaultPrinter()
         print(f"Target Printer: {default_printer}")
@@ -69,7 +82,7 @@ def print_to_windows_printer(filepath, copies):
         print("Print Error:", str(e))
         return False
 
-# 4. Print Route Triggered from Website/Phone
+# 4. Print Route
 @app.route('/print-multiple', methods=['POST'])
 def print_multiple():
     if 'files' not in request.files:
