@@ -4,16 +4,43 @@ import win32print
 import tkinter as tk
 from tkinter import messagebox
 from flask import Flask, request, jsonify
+from flask_cors import CORS
+from pypdf import PdfReader
 
 app = Flask(__name__)
+CORS(app)
+
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# 1. PC Screen par Permission Pop-Up Box
+# 1. Page Counter Endpoint for Frontend
+@app.route('/count-multiple-pages', methods=['POST'])
+def count_multiple_pages():
+    if 'files' not in request.files:
+        return jsonify({'error': 'No files uploaded'}), 400
+
+    files = request.files.getlist('files')
+    total_pages = 0
+
+    for file in files:
+        if file.filename != '':
+            filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+            file.save(filepath)
+            
+            try:
+                reader = PdfReader(filepath)
+                total_pages += len(reader.pages)
+            except Exception:
+                # Non-PDF files default to 1 page
+                total_pages += 1
+
+    return jsonify({'total_pages': total_pages})
+
+# 2. PC Screen Permission Pop-Up Box
 def ask_print_confirmation(filename, copies):
     root = tk.Tk()
-    root.withdraw()  # Main blank window ko chhupane ke liye
-    root.attributes("-topmost", True)  # Pop-up sabse upar dikhega
+    root.withdraw()
+    root.attributes("-topmost", True)
 
     response = messagebox.askyesno(
         "🖨️ Campus Print - Permission Needed",
@@ -22,7 +49,7 @@ def ask_print_confirmation(filename, copies):
     root.destroy()
     return response
 
-# 2. Windows Default Printer par Print bhejne ka Logic
+# 3. Windows Default Printer Execution
 def print_to_windows_printer(filepath, copies):
     try:
         default_printer = win32print.GetDefaultPrinter()
@@ -42,7 +69,7 @@ def print_to_windows_printer(filepath, copies):
         print("Print Error:", str(e))
         return False
 
-# 3. Print Route (Website Trigger)
+# 4. Print Route Triggered from Website/Phone
 @app.route('/print-multiple', methods=['POST'])
 def print_multiple():
     if 'files' not in request.files:
@@ -60,7 +87,6 @@ def print_multiple():
             file.save(filepath)
             abs_path = os.path.abspath(filepath)
             
-            # Pop-up se YES / NO confirmation pucho
             user_allowed = ask_print_confirmation(file.filename, copies)
             
             if user_allowed:
