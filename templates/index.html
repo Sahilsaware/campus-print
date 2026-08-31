@@ -310,8 +310,8 @@
         }
         formData.append('copies', document.getElementById('copies').value);
 
-        // Targeted Localhost PC Listener
-        const targetUrl = 'http://127.0.0.1:5000/print-multiple';
+        // Tunnel HTTPS URL targeting your local machine
+        const targetUrl = 'https://cf74ae6b257ef9.lhr.life/print-multiple';
 
         try {
             const res = await fetch(targetUrl, { method: 'POST', body: formData });
