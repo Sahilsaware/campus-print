@@ -1,87 +1,79 @@
 import os
-import sys
-import tempfile
-import threading
-from flask import Flask, render_template, request, jsonify
-from pypdf import PdfReader
-
-win32api = None
-win32print = None
-if sys.platform == "win32":
-    try:
-        import win32api
-        import win32print
-    except ImportError:
-        pass
+import win32api
+import win32print
+import tkinter as tk
+from tkinter import messagebox
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+UPLOAD_FOLDER = 'uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Printer Concurrency Lock (Queue System to prevent mixing documents)
-printer_lock = threading.Lock()
+# 1. PC Screen par Permission Pop-Up Box
+def ask_print_confirmation(filename, copies):
+    root = tk.Tk()
+    root.withdraw()  # Main blank window ko chhupane ke liye
+    root.attributes("-topmost", True)  # Pop-up sabse upar dikhega
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+    response = messagebox.askyesno(
+        "🖨️ Campus Print - Permission Needed",
+        f"New Print Job Received!\n\n📄 File: {filename}\n📑 Copies: {copies}\n\nDo you want to print this document now?"
+    )
+    root.destroy()
+    return response
 
-@app.route('/count-multiple-pages', methods=['POST'])
-def count_multiple_pages():
-    if 'files' not in request.files:
-        return jsonify({'error': 'No files uploaded'}), 400
+# 2. Windows Default Printer par Print bhejne ka Logic
+def print_to_windows_printer(filepath, copies):
+    try:
+        default_printer = win32print.GetDefaultPrinter()
+        print(f"Target Printer: {default_printer}")
+        
+        for _ in range(int(copies)):
+            win32api.ShellExecute(
+                0,
+                "print",
+                filepath,
+                f'/d:"{default_printer}"',
+                ".",
+                0
+            )
+        return True
+    except Exception as e:
+        print("Print Error:", str(e))
+        return False
 
-    files = request.files.getlist('files')
-    total_pages = 0
-
-    for file in files:
-        filename = file.filename.lower()
-        if filename.endswith('.pdf'):
-            try:
-                reader = PdfReader(file)
-                total_pages += len(reader.pages)
-            except Exception as e:
-                return jsonify({'error': f'Failed to process PDF {file.filename}: {str(e)}'}), 400
-        elif filename.endswith(('.png', '.jpg', '.jpeg', '.doc', '.docx', '.ppt', '.pptx')):
-            total_pages += 1
-        else:
-            return jsonify({'error': f'Unsupported file type: {file.filename}'}), 400
-
-    return jsonify({'total_pages': total_pages})
-
+# 3. Print Route (Website Trigger)
 @app.route('/print-multiple', methods=['POST'])
 def print_multiple():
     if 'files' not in request.files:
-        return jsonify({'error': 'No files provided'}), 400
-
+        return jsonify({'error': 'No files uploaded'}), 400
+        
     files = request.files.getlist('files')
-    copies = int(request.form.get('copies', 1))
+    copies = request.form.get('copies', 1)
 
-    # Acquire lock so print jobs are processed sequentially (FIFO Queue)
-    with printer_lock:
-        if sys.platform != "win32" or not win32print:
-            return jsonify({'success': True, 'message': 'Simulated print success (Cloud/Non-Windows platform)'})
+    printed_files = []
+    cancelled_files = []
 
-        try:
-            printer_name = win32print.GetDefaultPrinter()
-            temp_dir = tempfile.gettempdir()
+    for file in files:
+        if file.filename != '':
+            filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+            file.save(filepath)
+            abs_path = os.path.abspath(filepath)
+            
+            # Pop-up se YES / NO confirmation pucho
+            user_allowed = ask_print_confirmation(file.filename, copies)
+            
+            if user_allowed:
+                if print_to_windows_printer(abs_path, copies):
+                    printed_files.append(file.filename)
+            else:
+                cancelled_files.append(file.filename)
 
-            for file in files:
-                temp_path = os.path.join(temp_dir, file.filename)
-                file.save(temp_path)
-
-                for _ in range(copies):
-                    win32api.ShellExecute(
-                        0,
-                        "print",
-                        temp_path,
-                        f'/d:"{printer_name}"',
-                        ".",
-                        0
-                    )
-
-            return jsonify({'success': True, 'message': 'Print job sent successfully!'})
-        except Exception as e:
-            return jsonify({'error': f'Printing failed: {str(e)}'}), 500
+    if printed_files:
+        return jsonify({'message': f'Printed successfully: {", ".join(printed_files)}'})
+    else:
+        return jsonify({'error': 'Print job cancelled by PC operator.'}), 400
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 10000))
-    app.run(host='0.0.0.0', port=port)
+    print("🚀 Campus Print Server Active!")
+    app.run(host='0.0.0.0', port=5000, debug=True)
