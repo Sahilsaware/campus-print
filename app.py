@@ -1,8 +1,8 @@
 import os
+import subprocess
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-import subprocess
-from pypdf import PdfReader # <-- Yeh import zaroori hai
+from pypdf import PdfReader
 from io import BytesIO
 
 app = Flask(__name__)
@@ -15,7 +15,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def home():
     return render_template('index.html')
 
-# 1. Page Counter Endpoint for Frontend (Memory Stream - Fast & No Storage Waste)
+# 1. Page Counter Endpoint
 @app.route('/count-multiple-pages', methods=['POST'])
 def count_multiple_pages():
     if 'files' not in request.files:
@@ -41,30 +41,33 @@ def count_multiple_pages():
 
     return jsonify({'total_pages': total_pages})
 
-# 2. Print Endpoint for Frontend (Copy Limit + Windows Offline Check + Auto Cleanup)
-@app.route('/print-multiple', methods=['POST'])
-def print_multiple():
-    if 'files' not in request.files:
-        return jsonify({'error': 'No files uploaded'}), 400
-
-    # Validation: Copies limit (Max 50)
-    try:
-        copies = int(request.form.get('copies', 1))
-        if copies < 1 or copies > 100:
-            return jsonify({'error': 'Invalid copies! Max 50 copies allowed per print.'}), 400
-    except ValueError:
-        return jsonify({'error': 'Invalid copy count format'}), 400
-
-    # Windows Printer Offline Check (Print command se pehle check karega)
+# 2. Pre-Payment Printer Status Check Endpoint
+@app.route('/check-printer', methods=['GET'])
+def check_printer():
     try:
         status_check = subprocess.run(
             'powershell -Command "(Get-CimInstance Win32_Printer | Where-Object {$_.Default -eq $true}).WorkOffline"',
             capture_output=True, text=True, shell=True
         )
         if 'True' in status_check.stdout:
-            return jsonify({'error': 'Printer is currently offline or disconnected. Please check the printer.'}), 400
-    except Exception:
-        pass
+            return jsonify({'error': 'Printer is currently offline, disconnected, or out of paper.'}), 400
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# 3. Print Endpoint (Copy Limit + Windows Print + Auto Cleanup)
+@app.route('/print-multiple', methods=['POST'])
+def print_multiple():
+    if 'files' not in request.files:
+        return jsonify({'error': 'No files uploaded'}), 400
+
+    # Validation: Copies limit (Max 100)
+    try:
+        copies = int(request.form.get('copies', 1))
+        if copies < 1 or copies > 100:
+            return jsonify({'error': 'Invalid copies! Max 100 copies allowed per print.'}), 400
+    except ValueError:
+        return jsonify({'error': 'Invalid copy count format'}), 400
 
     files = request.files.getlist('files')
 
@@ -81,7 +84,6 @@ def print_multiple():
                     for _ in range(copies):
                         subprocess.run(f'powershell -Command "Start-Process -FilePath \'{abs_path}\' -Verb Print"', shell=True)
                     
-                    # Print command bhejte hi server se file delete ho jayegi
                     try:
                         os.remove(filepath)
                     except:
