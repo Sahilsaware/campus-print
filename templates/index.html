@@ -311,8 +311,7 @@
         formData.append('copies', document.getElementById('copies').value);
 
         // Updated Cloudflare Tunnel Link 
-        const targetUrl = ' https://aims-toilet-wit-physicians.trycloudflare.com';
-
+        const targetUrl = 'https://aims-toilet-wit-physicians.trycloudflare.com/print-multiple';
         try {
             const res = await fetch(targetUrl, { method: 'POST', body: formData });
             const data = await res.json();
