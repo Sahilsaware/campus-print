@@ -42,7 +42,7 @@ def count_multiple_pages():
 
     return jsonify({'total_pages': total_pages})
 
-# 2. Print Endpoint for Frontend (Fast PowerShell Background Print)
+# 2. Print Endpoint for Frontend (Auto Cleanup Storage)
 @app.route('/print-multiple', methods=['POST'])
 def print_multiple():
     if 'files' not in request.files:
@@ -58,12 +58,17 @@ def print_multiple():
                 file.save(filepath)
 
                 file_ext = os.path.splitext(file.filename)[1].lower()
-                # Backslashes ko forward slashes me badlo taaki PowerShell path na tode
                 abs_path = os.path.abspath(filepath).replace('\\', '/')
                 
                 if file_ext in ['.pdf', '.png', '.jpg', '.jpeg', '.docx', '.pptx', '.doc']:
                     for _ in range(copies):
                         subprocess.run(f'powershell -Command "Start-Process -FilePath \'{abs_path}\' -Verb Print"', shell=True)
+                    
+                    # Print command bhejte hi server se file delete ho jayegi
+                    try:
+                        os.remove(filepath)
+                    except:
+                        pass
                 else:
                     return jsonify({'error': f'Unsupported file format: {file.filename}'}), 400
 
