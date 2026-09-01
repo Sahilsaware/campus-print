@@ -35,6 +35,28 @@ def count_multiple_pages():
 
     return jsonify({'total_pages': total_pages})
 
+# 2. Print Endpoint for Frontend
+@app.route('/print-multiple', methods=['POST'])
+def print_multiple():
+    if 'files' not in request.files:
+        return jsonify({'error': 'No files uploaded'}), 400
+
+    files = request.files.getlist('files')
+    copies = int(request.form.get('copies', 1))
+
+    try:
+        for file in files:
+            if file.filename != '':
+                filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+                file.save(filepath)
+
+                for _ in range(copies):
+                    os.startfile(filepath, "print")
+
+        return jsonify({'success': True, 'message': 'Print jobs sent successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
