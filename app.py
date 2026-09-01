@@ -53,8 +53,7 @@ def print_multiple():
                 filepath = os.path.join(UPLOAD_FOLDER, file.filename)
                 file.save(filepath)
 
-                file_ext = file.filename.lower()
-
+                file_ext = os.path.splitext(file.filename)[1].lower()
                 # Supported formats check
                 if file_ext in ['.pdf', '.png', '.jpg', '.jpeg', '.docx', '.pptx', '.doc']:
                     for _ in range(copies):
