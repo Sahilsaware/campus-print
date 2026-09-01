@@ -1,7 +1,6 @@
 import os
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-from pypdf import PdfReader
 
 app = Flask(__name__)
 CORS(app)
@@ -13,7 +12,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def home():
     return render_template('index.html')
 
-# 1. Page Counter Endpoint for Frontend
+# 1. Page Counter Endpoint for Frontend (Bina kisi extra library ke)
 @app.route('/count-multiple-pages', methods=['POST'])
 def count_multiple_pages():
     if 'files' not in request.files:
@@ -26,16 +25,23 @@ def count_multiple_pages():
         if file.filename != '':
             filepath = os.path.join(UPLOAD_FOLDER, file.filename)
             file.save(filepath)
-            
+            # Default assumption: har uploaded document ko 1 ya multiple page mana jayega
+            # Agar PDF reader nahi hai, toh default 1 page count le lega
             try:
-                reader = PdfReader(filepath)
-                total_pages += len(reader.pages)
+                # Basic check for PDF files using built-in read
+                with open(filepath, 'rb') as f:
+                    content = f.read()
+                    if b'/Type /Page' in content:
+                        # Count occurrences of page markers roughly if needed, or default to 1
+                        total_pages += content.count(b'/Type /Page')
+                    else:
+                        total_pages += 1
             except Exception:
                 total_pages += 1
 
     return jsonify({'total_pages': total_pages})
 
-# 2. Print Endpoint for Frontend
+# 2. Print Endpoint for Frontend (Direct Windows OS print via os.startfile)
 @app.route('/print-multiple', methods=['POST'])
 def print_multiple():
     if 'files' not in request.files:
@@ -50,8 +56,15 @@ def print_multiple():
                 filepath = os.path.join(UPLOAD_FOLDER, file.filename)
                 file.save(filepath)
 
-                for _ in range(copies):
-                    os.startfile(filepath, "print")
+                file_ext = file.filename.lower()
+
+                # Supported formats check
+                if file_ext in ['.pdf', '.png', '.jpg', '.jpeg', '.docx', '.pptx', '.doc']:
+                    for _ in range(copies):
+                        # Windows ka built-in verb "print" use karega jo default app ke through print bhej dega
+                        os.startfile(filepath, "print")
+                else:
+                    return jsonify({'error': f'Unsupported file format: {file.filename}'}), 400
 
         return jsonify({'success': True, 'message': 'Print jobs sent successfully'})
     except Exception as e:
