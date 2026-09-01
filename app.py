@@ -50,7 +50,7 @@ def print_multiple():
     # Validation: Copies limit (Max 50)
     try:
         copies = int(request.form.get('copies', 1))
-        if copies < 1 or copies > 50:
+        if copies < 1 or copies > 100:
             return jsonify({'error': 'Invalid copies! Max 50 copies allowed per print.'}), 400
     except ValueError:
         return jsonify({'error': 'Invalid copy count format'}), 400
