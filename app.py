@@ -1,87 +1,75 @@
 import os
-import sys
-import tempfile
-import threading
-from flask import Flask, render_template, request, jsonify
-from pypdf import PdfReader
-
-win32api = None
-win32print = None
-if sys.platform == win32
-    try
-        import win32api
-        import win32print
-    except ImportError
-        pass
+from flask import Flask, request, jsonify, render_template
+from flask_cors import CORS
+import subprocess
+from pypdf import PdfReader # <-- Yeh import zaroori hai
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 50  1024  1024
+CORS(app)
 
-# Printer Concurrency Lock (Queue System to prevent mixing documents)
-printer_lock = threading.Lock()
+UPLOAD_FOLDER = 'uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-@app.route('')
-def index()
+@app.route('/')
+def home():
     return render_template('index.html')
 
-@app.route('count-multiple-pages', methods=['POST'])
-def count_multiple_pages()
-    if 'files' not in request.files
-        return jsonify({'error' 'No files uploaded'}), 400
+# 1. Page Counter Endpoint for Frontend (Fixed)
+@app.route('/count-multiple-pages', methods=['POST'])
+def count_multiple_pages():
+    if 'files' not in request.files:
+        return jsonify({'error': 'No files uploaded'}), 400
 
     files = request.files.getlist('files')
     total_pages = 0
 
-    for file in files
-        filename = file.filename.lower()
-        if filename.endswith('.pdf')
-            try
-                reader = PdfReader(file)
-                total_pages += len(reader.pages)
-            except Exception as e
-                return jsonify({'error' f'Failed to process PDF {file.filename} {str(e)}'}), 400
-        elif filename.endswith(('.png', '.jpg', '.jpeg', '.doc', '.docx', '.ppt', '.pptx'))
-            total_pages += 1
-        else
-            return jsonify({'error' f'Unsupported file type {file.filename}'}), 400
+    for file in files:
+        if file.filename != '':
+            filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+            file.save(filepath)
+            
+            # Yahan sahi extension extract kiya hai
+            file_ext = os.path.splitext(file.filename)[1].lower()
+            
+            try:
+                if file_ext == '.pdf':
+                    reader = PdfReader(filepath)
+                    total_pages += len(reader.pages)
+                else:
+                    total_pages += 1
+            except Exception:
+                total_pages += 1
 
-    return jsonify({'total_pages' total_pages})
+    return jsonify({'total_pages': total_pages})
 
-@app.route('print-multiple', methods=['POST'])
-def print_multiple()
-    if 'files' not in request.files
-        return jsonify({'error' 'No files provided'}), 400
+# 2. Print Endpoint for Frontend (Fast PowerShell Background Print)
+@app.route('/print-multiple', methods=['POST'])
+def print_multiple():
+    if 'files' not in request.files:
+        return jsonify({'error': 'No files uploaded'}), 400
 
     files = request.files.getlist('files')
     copies = int(request.form.get('copies', 1))
 
-    # Acquire lock so print jobs are processed sequentially (FIFO Queue)
-    with printer_lock
-        if sys.platform != win32 or not win32print
-            return jsonify({'success' True, 'message' 'Simulated print success (CloudNon-Windows platform)'})
+    try:
+        for file in files:
+            if file.filename != '':
+                filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+                file.save(filepath)
 
-        try
-            printer_name = win32print.GetDefaultPrinter()
-            temp_dir = tempfile.gettempdir()
+                file_ext = os.path.splitext(file.filename)[1].lower()
+                # Backslashes ko forward slashes me badlo taaki PowerShell path na tode
+                abs_path = os.path.abspath(filepath).replace('\\', '/')
+                
+                if file_ext in ['.pdf', '.png', '.jpg', '.jpeg', '.docx', '.pptx', '.doc']:
+                    for _ in range(copies):
+                        subprocess.run(f'powershell -Command "Start-Process -FilePath \'{abs_path}\' -Verb Print"', shell=True)
+                else:
+                    return jsonify({'error': f'Unsupported file format: {file.filename}'}), 400
 
-            for file in files
-                temp_path = os.path.join(temp_dir, file.filename)
-                file.save(temp_path)
-
-                for _ in range(copies)
-                    win32api.ShellExecute(
-                        0,
-                        print,
-                        temp_path,
-                        f'd{printer_name}',
-                        .,
-                        0
-                    )
-
-            return jsonify({'success' True, 'message' 'Print job sent successfully!'})
-        except Exception as e
-            return jsonify({'error' f'Printing failed {str(e)}'}), 500
-
+        return jsonify({'success': True, 'message': 'Print jobs sent successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
