@@ -116,7 +116,7 @@
 
             <div class="form-group">
                     <label>Copies</label>
-                    <input type="number" id="copies" value="1" min="1" max="100" onchange="calculatePrice()">
+                    <input type="number" id="copies" value="1" min="1" max="100" oninput="if(this.value > 100) this.value = 100; if(this.value < 1) this.value = 1; calculatePrice();">
                     <small style="color: #ff4d4d; display: block; margin-top: 4px;">⚠️ Max limit: 100 copies allowed per print.</small>
             </div>
 
@@ -143,7 +143,7 @@
             
             <div class="btn-row">
                 <button class="btn secondary-btn" onclick="setStep(3)">Back</button>
-                <button class="btn pay-btn" onclick="processPayment()">Proceed to Payment</button>
+                <button class="btn pay-btn" onclick="checkPrinterAndProceed()">Proceed to Payment</button>
             </div>
         </div>
 
@@ -237,7 +237,17 @@
 
     function calculatePrice() {
         const colorMode = document.getElementById('color-mode').value;
-        const copies = parseInt(document.getElementById('copies').value) || 1;
+        const copiesInput = document.getElementById('copies');
+        let copies = parseInt(copiesInput.value) || 1;
+        
+        if (copies > 100) {
+            copies = 100;
+            copiesInput.value = 100;
+        } else if (copies < 1) {
+            copies = 1;
+            copiesInput.value = 1;
+        }
+
         const pageRangeStr = document.getElementById('page-range').value;
 
         computedPagesToPrint = parsePageRange(pageRangeStr, totalDetectedPages);
@@ -254,6 +264,25 @@
     function goToStep4() {
         calculatePrice();
         setStep(4);
+    }
+
+    // Pre-Payment Printer Status Check to prevent money deduction/refund issues
+    async function checkPrinterAndProceed() {
+        calculatePrice();
+        const targetCheckUrl = 'https://aims-toilet-wit-physicians.trycloudflare.com/check-printer';
+        
+        try {
+            const res = await fetch(targetCheckUrl);
+            const data = await res.json();
+            
+            if (res.ok && data.success) {
+                processPayment();
+            } else {
+                alert(data.error || 'Printer is currently offline, disconnected, or out of paper. Please check the printer before paying.');
+            }
+        } catch (e) {
+            alert('Could not verify printer status from local server. Ensure the local listener script is running.');
+        }
     }
 
     function processPayment() {
@@ -339,5 +368,4 @@
     }
 </script>
 </body>
-    </html>
-    
+</html>
