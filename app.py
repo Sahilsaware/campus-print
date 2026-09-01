@@ -1,7 +1,8 @@
 import os
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-from pypdf import PdfReader  # <-- Yeh import zaroori hai
+import subprocess
+from pypdf import PdfReader # <-- Yeh import zaroori hai
 
 app = Flask(__name__)
 CORS(app)
