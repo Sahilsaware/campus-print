@@ -57,11 +57,11 @@ def print_multiple():
                 file.save(filepath)
 
                 file_ext = os.path.splitext(file.filename)[1].lower()
-                abs_path = os.path.abspath(filepath)
+                # Backslashes ko forward slashes me badlo taaki PowerShell path na tode
+                abs_path = os.path.abspath(filepath).replace('\\', '/')
                 
                 if file_ext in ['.pdf', '.png', '.jpg', '.jpeg', '.docx', '.pptx', '.doc']:
                     for _ in range(copies):
-                        # PowerShell ke zariye direct silent/fast print command
                         subprocess.run(f'powershell -Command "Start-Process -FilePath \'{abs_path}\' -Verb Print"', shell=True)
                 else:
                     return jsonify({'error': f'Unsupported file format: {file.filename}'}), 400
