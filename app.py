@@ -12,7 +12,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def home():
     return render_template('index.html')
 
-# 1. Page Counter Endpoint for Frontend (Bina kisi extra library ke)
+# 1. Page Counter Endpoint for Frontend (Updated)
 @app.route('/count-multiple-pages', methods=['POST'])
 def count_multiple_pages():
     if 'files' not in request.files:
@@ -25,17 +25,14 @@ def count_multiple_pages():
         if file.filename != '':
             filepath = os.path.join(UPLOAD_FOLDER, file.filename)
             file.save(filepath)
-            # Default assumption: har uploaded document ko 1 ya multiple page mana jayega
-            # Agar PDF reader nahi hai, toh default 1 page count le lega
+            file_ext = file.filename.lower()
+            
             try:
-                # Basic check for PDF files using built-in read
-                with open(filepath, 'rb') as f:
-                    content = f.read()
-                    if b'/Type /Page' in content:
-                        # Count occurrences of page markers roughly if needed, or default to 1
-                        total_pages += content.count(b'/Type /Page')
-                    else:
-                        total_pages += 1
+                if file_ext == '.pdf':
+                    reader = PdfReader(filepath)
+                    total_pages += len(reader.pages)
+                else:
+                    total_pages += 1
             except Exception:
                 total_pages += 1
 
