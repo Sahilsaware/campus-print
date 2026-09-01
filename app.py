@@ -1,6 +1,7 @@
 import os
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
+from pypdf import PdfReader  # <-- Yeh import zaroori hai
 
 app = Flask(__name__)
 CORS(app)
@@ -12,7 +13,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def home():
     return render_template('index.html')
 
-# 1. Page Counter Endpoint for Frontend (Updated)
+# 1. Page Counter Endpoint for Frontend (Fixed)
 @app.route('/count-multiple-pages', methods=['POST'])
 def count_multiple_pages():
     if 'files' not in request.files:
@@ -25,7 +26,9 @@ def count_multiple_pages():
         if file.filename != '':
             filepath = os.path.join(UPLOAD_FOLDER, file.filename)
             file.save(filepath)
-            file_ext = file.filename.lower()
+            
+            # Yahan sahi extension extract kiya hai
+            file_ext = os.path.splitext(file.filename)[1].lower()
             
             try:
                 if file_ext == '.pdf':
@@ -38,7 +41,7 @@ def count_multiple_pages():
 
     return jsonify({'total_pages': total_pages})
 
-# 2. Print Endpoint for Frontend (Direct Windows OS print via os.startfile)
+# 2. Print Endpoint for Frontend
 @app.route('/print-multiple', methods=['POST'])
 def print_multiple():
     if 'files' not in request.files:
@@ -54,10 +57,9 @@ def print_multiple():
                 file.save(filepath)
 
                 file_ext = os.path.splitext(file.filename)[1].lower()
-                # Supported formats check
+                
                 if file_ext in ['.pdf', '.png', '.jpg', '.jpeg', '.docx', '.pptx', '.doc']:
                     for _ in range(copies):
-                        # Windows ka built-in verb "print" use karega jo default app ke through print bhej dega
                         os.startfile(filepath, "print")
                 else:
                     return jsonify({'error': f'Unsupported file format: {file.filename}'}), 400
