@@ -310,6 +310,312 @@
         }
         formData.append('copies', document.getElementById('copies').value);
 
+        // Cloudflare Active Tunnel Link Updated
+        const targetUrl = 'https://catalog-newsletters-aaa-whose.trycloudflare.com/print-multiple';
+
+        try {
+            const res = await fetch(targetUrl, { method: 'POST', body: formData });
+            const data = await res.json();
+            
+            document.getElementById('loading-spinner').style.display = "none";
+            
+            if (res.ok) {
+                document.getElementById('status-text').innerText = "Payment successful & Print job completed! Please collect your documents safely from the tray.";
+            } else {
+                document.getElementById('status-text').innerText = "Printing error: " + (data.error || "Unknown error");
+            }
+        } catch (e) {
+            document.getElementById('loading-spinner').style.display = "none";
+            document.getElementById('status-text').innerText = "Network error: Local PC listener active nahi hai ya unreachable hai.";
+        }
+    }
+
+    function resetKiosk() {
+        document.getElementById('file-input').value = "";
+        document.getElementById('page-range').value = "";
+        document.getElementById('copies').value = "1";
+        document.getElementById('loading-spinner').style.display = "block";
+        setStep(1);
+    }
+</script>
+</body>
+</html>
+                    <path d="M75 55V32C75 26.4772 79.4772 22 85 22H175C180.523 22 185 26.4772 185 32V55" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4 4"/>
+                    <rect x="100" y="28" width="60" height="35" rx="4" fill="#f8fafc" opacity="0.9"/>
+                    <rect x="108" y="36" width="35" height="3" rx="1.5" fill="#0f172a"/>
+                    <rect x="108" y="44" width="44" height="2" rx="1" fill="#38bdf8"/>
+                    <path d="M80 105H180V132C180 134.761 177.761 137 175 137H85C82.2386 137 80 134.761 80 132V105Z" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+                    <rect x="94" y="113" width="72" height="3" rx="1.5" fill="#f8fafc" opacity="0.8"/>
+                    <rect x="94" y="121" width="48" height="3" rx="1.5" fill="#38bdf8"/>
+                    <rect x="155" y="70" width="40" height="18" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+                    <circle cx="166" cy="79" r="3.5" fill="#38bdf8"/>
+                    <circle cx="182" cy="79" r="3.5" fill="#10b981"/>
+                    <circle cx="65" cy="80" r="4" fill="#38bdf8"/>
+                    <circle cx="65" cy="95" r="4" fill="#475569"/>
+                </svg>
+            </div>
+
+            <h2 class="styled-heading">Welcome to Campus Print</h2>
+            <p class="info-text">Fast and secure printing for students. Upload, customize, and collect instantly.</p>
+            <button class="btn" onclick="setStep(2)" style="margin-top: 25px;">Next</button>
+        </div>
+
+        <!-- Step 2: Upload -->
+        <div class="step-content" id="step-2">
+            <h2 class="styled-heading">📁 Upload Document</h2>
+            <p class="info-text">Supported formats: PDF, JPG, PNG, Word, PPT</p>
+            
+            <div class="form-group" style="margin-top: 20px;">
+                <label>Select your files to print</label>
+                <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.ppt,.pptx">
+            </div>
+
+            <div class="btn-row" style="margin-top: 30px;">
+                <button class="btn secondary-btn" onclick="setStep(1)">Back</button>
+                <button class="btn" onclick="handleFileUploadAndNext()">Next</button>
+            </div>
+        </div>
+
+        <!-- Step 3: Print Settings -->
+        <div class="step-content" id="step-3">
+            <h2 class="styled-heading">⚙️ Print Settings</h2>
+            
+            <div class="form-group">
+                <label>Color Mode</label>
+                <select id="color-mode" onchange="calculatePrice()">
+                    <option value="bw">Black & White (₹2/page)</option>
+                    <option value="color">Color (₹10/page)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Paper Size</label>
+                <select id="paper-size">
+                    <option value="A4">A4 Size</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Orientation</label>
+                <select id="orientation">
+                    <option value="portrait">Portrait</option>
+                    <option value="landscape">Landscape</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Sides / Layout</label>
+                <select id="sides">
+                    <option value="single">Print on 1 Side</option>
+                    <option value="double">Print on Both Sides (Duplex)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Pages per Sheet</label>
+                <select id="pages-per-sheet">
+                    <option value="1">1 Page per sheet</option>
+                    <option value="2">2 Pages per sheet</option>
+                    <option value="4">4 Pages per sheet</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Copies</label>
+                <input type="number" id="copies" value="1" min="1" onchange="calculatePrice()">
+            </div>
+
+            <div class="form-group">
+                <label>Page Range (e.g., 1-5 or leave blank for all)</label>
+                <input type="text" id="page-range" placeholder="All pages" onchange="calculatePrice()">
+            </div>
+
+            <div class="btn-row">
+                <button class="btn secondary-btn" onclick="setStep(2)">Back</button>
+                <button class="btn" onclick="goToStep4()">Next</button>
+            </div>
+        </div>
+
+        <!-- Step 4: Summary & Payment -->
+        <div class="step-content" id="step-4">
+            <h2 class="styled-heading">💳 Order Summary & Payment</h2>
+            <div class="summary-box">
+                <div class="summary-row"><span>Total Pages Detected:</span><span id="summary-pages">0</span></div>
+                <div class="summary-row"><span>Selected Pages to Print:</span><span id="summary-print-pages">0</span></div>
+                <div class="summary-row"><span>Copies:</span><span id="summary-copies">1</span></div>
+                <div class="summary-row total-price"><span>Total Amount:</span><span id="summary-total">₹0</span></div>
+            </div>
+            
+            <div class="btn-row">
+                <button class="btn secondary-btn" onclick="setStep(3)">Back</button>
+                <button class="btn pay-btn" onclick="processPayment()">Proceed to Payment</button>
+            </div>
+        </div>
+
+        <!-- Step 5: Status -->
+        <div class="step-content" id="step-5">
+            <h2 class="styled-heading">🖨️ Print Status</h2>
+            <div class="printing-loader">
+                <div class="spinner" id="loading-spinner"></div>
+                <p id="status-text" class="status-msg">Printing process active. Your job is securely in the queue...</p>
+            </div>
+            <button class="btn reset-btn" onclick="resetKiosk()">Print Another File</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.hero-image-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 18px;
+}
+.hero-svg {
+    width: 175px;
+    height: 105px;
+    filter: drop-shadow(0 8px 16px rgba(56, 189, 248, 0.25));
+}
+</style>
+
+<script>
+    let totalDetectedPages = 0;
+    let computedPagesToPrint = 0;
+    let finalCalculatedCost = 0;
+
+    function setStep(step) {
+        document.querySelectorAll('.step-content').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.step-node').forEach(n => n.classList.remove('active'));
+        
+        document.getElementById(`step-${step}`).classList.add('active');
+        for(let i = 1; i <= step; i++) {
+            document.getElementById(`node-${i}`).classList.add('active');
+        }
+    }
+
+    async function handleFileUploadAndNext() {
+        const files = document.getElementById('file-input').files;
+        if (files.length === 0) {
+            alert('Please select at least one file before proceeding.');
+            return;
+        }
+
+        const formData = new FormData();
+        for (let i = 0; i < files.length; i++) {
+            formData.append('files', files[i]);
+        }
+
+        try {
+            const res = await fetch('/count-multiple-pages', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (res.ok) {
+                totalDetectedPages = data.total_pages;
+                calculatePrice();
+                setStep(3);
+            } else {
+                alert(data.error || 'Failed to analyze files.');
+            }
+        } catch (e) {
+            alert('Error connecting to backend server.');
+        }
+    }
+
+    function parsePageRange(rangeStr, maxPages) {
+        if (!rangeStr.trim()) return maxPages;
+        const pages = new Set();
+        const parts = rangeStr.split(',');
+
+        parts.forEach(part => {
+            if (part.includes('-')) {
+                const [start, end] = part.split('-').map(Number);
+                if (start && end) {
+                    for (let i = start; i <= Math.min(end, maxPages); i++) {
+                        if (i >= 1) pages.add(i);
+                    }
+                }
+            } else {
+                const p = Number(part);
+                if (p && p >= 1 && p <= maxPages) pages.add(p);
+            }
+        });
+        return pages.size > 0 ? pages.size : maxPages;
+    }
+
+    function calculatePrice() {
+        const colorMode = document.getElementById('color-mode').value;
+        const copies = parseInt(document.getElementById('copies').value) || 1;
+        const pageRangeStr = document.getElementById('page-range').value;
+
+        computedPagesToPrint = parsePageRange(pageRangeStr, totalDetectedPages);
+
+        let baseRate = colorMode === 'color' ? 10.0 : 2.0;
+        finalCalculatedCost = Math.ceil(computedPagesToPrint * baseRate * copies);
+
+        document.getElementById('summary-pages').innerText = totalDetectedPages;
+        document.getElementById('summary-print-pages').innerText = computedPagesToPrint;
+        document.getElementById('summary-copies').innerText = copies;
+        document.getElementById('summary-total').innerText = `₹${finalCalculatedCost}`;
+    }
+
+    function goToStep4() {
+        calculatePrice();
+        setStep(4);
+    }
+
+    function processPayment() {
+        if (finalCalculatedCost <= 0) {
+            sendToPrinter();
+            return;
+        }
+
+        var options = {
+            "key": "rzp_test_TURAyEBXgKmNLg", 
+            "amount": finalCalculatedCost * 100, 
+            "currency": "INR",
+            "name": "Campus Print",
+            "description": "Document Printing Fee",
+            "handler": function (response){
+                sendToPrinter();
+            },
+            "modal": {
+                "ondismiss": function(){
+                    console.log('Payment modal closed by user');
+                }
+            },
+            "prefill": {
+                "name": "Student",
+                "email": "student@campus.edu",
+                "contact": "9999999999"
+            },
+            "theme": {
+                "color": "#38bdf8"
+            }
+        };
+        
+        try {
+            var rzp1 = new Razorpay(options);
+            rzp1.on('payment.failed', function (response){
+                alert("Payment Failed: " + response.error.description);
+            });
+            rzp1.open();
+        } catch (err) {
+            console.warn("Razorpay script error, triggering direct print fallback.");
+            sendToPrinter();
+        }
+    }
+
+    async function sendToPrinter() {
+        setStep(5);
+        document.getElementById('loading-spinner').style.display = "block";
+        document.getElementById('status-text').innerText = "Printing process active. Secure queue handling your job...";
+        
+        const files = document.getElementById('file-input').files;
+        const formData = new FormData();
+        
+        for (let i = 0; i < files.length; i++) {
+            formData.append('files', files[i]);
+        }
+        formData.append('copies', document.getElementById('copies').value);
+
         // Cloudflare Active Tunnel Link
         const targetUrl = 'https://determines-satisfy-equity-kurt.trycloudflare.com/print-multiple';
 
