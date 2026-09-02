@@ -187,6 +187,16 @@
         }
     }
 
+    async function isPrinterOnline() {
+        try {
+            const res = await fetch('/printer-status');
+            const data = await res.json();
+            return data.online;
+        } catch (e) {
+            return false;
+        }
+    }
+
     async function handleFileUploadAndNext() {
         const files = document.getElementById('file-input').files;
         if (files.length === 0) {
@@ -273,8 +283,16 @@
         setStep(4);
     }
 
-    function checkPrinterAndProceed() {
+    async function checkPrinterAndProceed() {
         calculatePrice();
+        
+        // Block payment if College PC script is offline
+        const online = await isPrinterOnline();
+        if (!online) {
+            alert("⚠️ Kiosk Printer is currently OFFLINE.\n\nPlease ensure the college printer PC is powered on and ready before making a payment.");
+            return;
+        }
+
         processPayment();
     }
 
@@ -359,4 +377,5 @@
     }
 </script>
 </body>
-</html>
+                        </html>
+    
