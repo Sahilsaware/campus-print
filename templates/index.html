@@ -76,7 +76,7 @@
             
             <div class="form-group">
                 <label>Color Mode</label>
-                <select id="color-mode" onchange="calculatePrice()">
+                <select id="color-mode" onchange="calculatePrice(); updateLivePreviewIfOpen();">
                     <option value="bw">Black & White (₹2/page)</option>
                     <option value="color">Color (₹10/page)</option>
                 </select>
@@ -91,7 +91,7 @@
 
             <div class="form-group">
                 <label>Orientation</label>
-                <select id="orientation">
+                <select id="orientation" onchange="updateLivePreviewIfOpen();">
                     <option value="portrait">Portrait</option>
                     <option value="landscape">Landscape</option>
                 </select>
@@ -107,7 +107,7 @@
 
             <div class="form-group">
                 <label>Pages per Sheet</label>
-                <select id="pages-per-sheet" onchange="calculatePrice()">
+                <select id="pages-per-sheet" onchange="calculatePrice(); updateLivePreviewIfOpen();">
                     <option value="1">1 Page per sheet</option>
                     <option value="2">2 Pages per sheet</option>
                     <option value="4">4 Pages per sheet</option>
@@ -122,11 +122,11 @@
 
             <div class="form-group">
                 <label>Page Range (e.g., 1-5 or leave blank for all)</label>
-                <input type="text" id="page-range" placeholder="All pages" oninput="calculatePrice()">
+                <input type="text" id="page-range" placeholder="All pages" oninput="calculatePrice(); updateLivePreviewIfOpen();">
             </div>
 
             <div style="margin-top: 15px; margin-bottom: 20px;">
-                <button type="button" class="btn secondary-btn" style="width: 100%; border: 1px dashed #38bdf8; color: #38bdf8;" onclick="triggerPdfPreview()">
+                <button type="button" class="btn secondary-btn" style="width: 100%; border: 1px dashed #38bdf8; color: #38bdf8;" onclick="triggerDocumentPreview()">
                     👁️ Preview Final Print Layout
                 </button>
             </div>
@@ -164,40 +164,18 @@
     </div>
 </div>
 
-<!-- Modal with In-Preview Dynamic Edit Panel -->
+<!-- Modal Container -->
 <div id="pdfModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.88); z-index:9999; justify-content:center; align-items:center; backdrop-filter: blur(5px);">
     <div style="background:#1e293b; width:95%; max-width:900px; height:88vh; border-radius:12px; display:flex; flex-direction:column; padding:18px; border:1px solid #334155; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
         
-        <!-- Header -->
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom: 1px solid #334155; padding-bottom: 10px;">
-            <h3 id="modalFileName" style="margin:0; color:#f8fafc; font-size: 1.1rem;">📄 Print Preview</h3>
+            <div>
+                <h3 id="modalFileName" style="margin:0; color:#f8fafc; font-size: 1.1rem;">📄 Document Preview</h3>
+                <small id="modalSubTitle" style="color:#38bdf8;">Real-time Settings Applied</small>
+            </div>
             <button onclick="closePreviewModal()" style="background:#ef4444; color:#fff; border:none; padding:6px 14px; cursor:pointer; border-radius:6px; font-weight:600;">Close ✖</button>
         </div>
 
-        <!-- In-Modal Dynamic Controls -->
-        <div style="display:flex; gap:12px; wrap:wrap; background:#0f172a; padding:12px; border-radius:8px; margin-bottom:12px; align-items:center;">
-            <div style="flex:1; min-width:140px;">
-                <label style="font-size:12px; color:#94a3b8; display:block;">Color</label>
-                <select id="modal-color" style="width:100%; padding:6px; background:#1e293b; color:#fff; border:1px solid #475569; border-radius:4px;" onchange="syncAndRenderModal('color')">
-                    <option value="bw">Black & White</option>
-                    <option value="color">Color</option>
-                </select>
-            </div>
-            <div style="flex:1; min-width:140px;">
-                <label style="font-size:12px; color:#94a3b8; display:block;">Pages per Sheet</label>
-                <select id="modal-pps" style="width:100%; padding:6px; background:#1e293b; color:#fff; border:1px solid #475569; border-radius:4px;" onchange="syncAndRenderModal('pps')">
-                    <option value="1">1 Page per sheet</option>
-                    <option value="2">2 Pages per sheet</option>
-                    <option value="4">4 Pages per sheet</option>
-                </select>
-            </div>
-            <div style="flex:1.5; min-width:160px;">
-                <label style="font-size:12px; color:#94a3b8; display:block;">Page Range</label>
-                <input type="text" id="modal-range" placeholder="e.g. 1-3" style="width:100%; padding:6px; background:#1e293b; color:#fff; border:1px solid #475569; border-radius:4px;" oninput="syncAndRenderModal('range')">
-            </div>
-        </div>
-
-        <!-- Canvas Display Area -->
         <div id="pdfCanvasContainer" style="flex:1; overflow-y:auto; background:#0f172a; padding:15px; border-radius:8px; display:flex; flex-direction:column; align-items:center; gap:20px;">
         </div>
     </div>
@@ -206,10 +184,11 @@
 <style>
 .hero-image-container { display: flex; justify-content: center; margin-bottom: 18px; }
 .hero-svg { width: 175px; height: 105px; filter: drop-shadow(0 8px 16px rgba(56, 189, 248, 0.25)); }
-#pdfCanvasContainer canvas {
+#pdfCanvasContainer canvas, #pdfCanvasContainer img {
     background: #ffffff;
     border-radius: 4px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    max-width: 100%;
 }
 .bw-filter { filter: grayscale(100%) contrast(120%) !important; }
 </style>
@@ -219,6 +198,7 @@
     let computedPagesToPrint = 0;
     let finalCalculatedCost = 0;
     let currentPdfDoc = null;
+    let currentImageSrc = null;
 
     function setStep(step) {
         document.querySelectorAll('.step-content').forEach(s => s.classList.remove('active'));
@@ -255,16 +235,34 @@
     }
 
     async function renderPagesWithSettings() {
-        if (!currentPdfDoc) return;
         const container = document.getElementById('pdfCanvasContainer');
         container.innerHTML = '';
 
-        const colorMode = document.getElementById('modal-color').value;
-        const pageRangeStr = document.getElementById('modal-range').value;
-        const pps = parseInt(document.getElementById('modal-pps').value) || 1;
+        const colorMode = document.getElementById('color-mode').value;
+        const orientation = document.getElementById('orientation').value;
+        const pps = parseInt(document.getElementById('pages-per-sheet').value) || 1;
+
+        if (currentImageSrc) {
+            document.getElementById('modalSubTitle').innerText = `Color: ${colorMode.toUpperCase()} | Orientation: ${orientation.toUpperCase()}`;
+            const img = document.createElement('img');
+            img.src = currentImageSrc;
+            if (colorMode === 'bw') img.classList.add('bw-filter');
+            if (orientation === 'landscape') {
+                img.style.transform = 'rotate(90deg)';
+                img.style.margin = '40px 0';
+            }
+            container.appendChild(img);
+            return;
+        }
+
+        if (!currentPdfDoc) return;
+        
+        const pageRangeStr = document.getElementById('page-range').value;
         const allowedPages = Array.from(getParsedPageSet(pageRangeStr, currentPdfDoc.numPages));
 
-        // Chunk pages by Pages Per Sheet (1, 2, or 4)
+        document.getElementById('modalSubTitle').innerText = 
+            `Color: ${colorMode.toUpperCase()} | Orientation: ${orientation.toUpperCase()} | Grid: ${pps} per sheet`;
+
         const pageGroups = [];
         for (let i = 0; i < allowedPages.length; i += pps) {
             pageGroups.push(allowedPages.slice(i, i + pps));
@@ -279,16 +277,22 @@
 
             if (pps === 1) {
                 const page = await currentPdfDoc.getPage(pageNums[0]);
-                const viewport = page.getViewport({ scale: 1.0 });
+                let scale = 1.0;
+                let viewport = page.getViewport({ scale: scale });
+
+                if (orientation === 'landscape' && viewport.width < viewport.height) {
+                    viewport = page.getViewport({ scale: scale, rotation: 90 });
+                }
+
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
                 await page.render({ canvasContext: ctx, viewport: viewport }).promise;
             } 
             else if (pps === 2) {
                 const page1 = await currentPdfDoc.getPage(pageNums[0]);
-                const vp1 = page1.getViewport({ scale: 0.7 });
+                const vp1 = page1.getViewport({ scale: 0.6 });
                 const page2 = pageNums[1] ? await currentPdfDoc.getPage(pageNums[1]) : null;
-                const vp2 = page2 ? page2.getViewport({ scale: 0.7 }) : null;
+                const vp2 = page2 ? page2.getViewport({ scale: 0.6 }) : null;
 
                 const sheetWidth = vp1.width * 2 + 30;
                 const sheetHeight = vp1.height + 20;
@@ -299,13 +303,11 @@
                 ctx.fillStyle = "#ffffff";
                 ctx.fillRect(0, 0, sheetWidth, sheetHeight);
 
-                // Render Left Page
                 const c1 = document.createElement('canvas');
                 c1.width = vp1.width; c1.height = vp1.height;
                 await page1.render({ canvasContext: c1.getContext('2d'), viewport: vp1 }).promise;
                 ctx.drawImage(c1, 10, 10);
 
-                // Render Right Page
                 if (page2) {
                     const c2 = document.createElement('canvas');
                     c2.width = vp2.width; c2.height = vp2.height;
@@ -315,7 +317,7 @@
             } 
             else if (pps === 4) {
                 const page1 = await currentPdfDoc.getPage(pageNums[0]);
-                const vp = page1.getViewport({ scale: 0.5 });
+                const vp = page1.getViewport({ scale: 0.45 });
 
                 const sheetWidth = vp.width * 2 + 30;
                 const sheetHeight = vp.height * 2 + 30;
@@ -346,48 +348,56 @@
         }
     }
 
-    function syncAndRenderModal(changedFrom) {
-        if (changedFrom === 'color') document.getElementById('color-mode').value = document.getElementById('modal-color').value;
-        if (changedFrom === 'pps') document.getElementById('pages-per-sheet').value = document.getElementById('modal-pps').value;
-        if (changedFrom === 'range') document.getElementById('page-range').value = document.getElementById('modal-range').value;
-
-        calculatePrice();
-        renderPagesWithSettings();
+    function updateLivePreviewIfOpen() {
+        const modal = document.getElementById('pdfModal');
+        if (modal.style.display === 'flex') {
+            renderPagesWithSettings();
+        }
     }
 
-    function triggerPdfPreview() {
+    function triggerDocumentPreview() {
         const files = document.getElementById('file-input').files;
         if (files.length === 0) {
             alert('No file selected.');
             return;
         }
         const file = files[0];
-        if (file.type !== 'application/pdf') {
-            alert('Live visual preview is supported for PDF files.');
+        const ext = file.name.split('.').pop().toLowerCase();
+
+        if (['doc', 'docx', 'ppt', 'pptx'].includes(ext)) {
+            alert("Visual preview is available for PDF and Image files. Your document will be printed directly with all applied print settings.");
             return;
         }
-
-        document.getElementById('modal-color').value = document.getElementById('color-mode').value;
-        document.getElementById('modal-pps').value = document.getElementById('pages-per-sheet').value;
-        document.getElementById('modal-range').value = document.getElementById('page-range').value;
 
         const modal = document.getElementById('pdfModal');
         const container = document.getElementById('pdfCanvasContainer');
         document.getElementById('modalFileName').innerText = "📄 " + file.name;
-        container.innerHTML = '<p style="color:#94a3b8;">Rendering live multi-page layout preview...</p>';
+        container.innerHTML = '<p style="color:#94a3b8;">Rendering live layout preview...</p>';
         modal.style.display = 'flex';
 
-        const fileReader = new FileReader();
-        fileReader.onload = function() {
-            const typedarray = new Uint8Array(this.result);
-            pdfjsLib.getDocument(typedarray).promise.then(pdf => {
-                currentPdfDoc = pdf;
+        currentPdfDoc = null;
+        currentImageSrc = null;
+
+        if (['jpg', 'jpeg', 'png'].includes(ext)) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentImageSrc = e.target.result;
                 renderPagesWithSettings();
-            }).catch(err => {
-                container.innerHTML = '<p style="color:#ef4444;">Failed to load PDF preview.</p>';
-            });
-        };
-        fileReader.readAsArrayBuffer(file);
+            };
+            reader.readAsDataURL(file);
+        } else if (ext === 'pdf') {
+            const fileReader = new FileReader();
+            fileReader.onload = function() {
+                const typedarray = new Uint8Array(this.result);
+                pdfjsLib.getDocument(typedarray).promise.then(pdf => {
+                    currentPdfDoc = pdf;
+                    renderPagesWithSettings();
+                }).catch(err => {
+                    container.innerHTML = '<p style="color:#ef4444;">Failed to load PDF preview.</p>';
+                });
+            };
+            fileReader.readAsArrayBuffer(file);
+        }
     }
 
     function closePreviewModal() {
@@ -545,6 +555,7 @@
         document.getElementById('page-range').value = "";
         document.getElementById('copies').value = "1";
         currentPdfDoc = null;
+        currentImageSrc = null;
         document.getElementById('loading-spinner').style.display = "block";
         setStep(1);
     }
