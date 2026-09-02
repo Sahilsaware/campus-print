@@ -6,6 +6,12 @@
     <title>Campus Print</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    
+    <!-- PDF.js Library Integration -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
 </head>
 <body>
 
@@ -61,7 +67,14 @@
             
             <div class="form-group" style="margin-top: 20px;">
                 <label>Select your files to print</label>
-                <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.ppt,.pptx">
+                <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.ppt,.pptx" onchange="togglePreviewButton()">
+            </div>
+
+            <!-- Preview Trigger Option -->
+            <div id="preview-btn-container" style="display: none; margin-top: 15px;">
+                <button type="button" class="btn secondary-btn" style="width: 100%; border: 1px dashed #38bdf8; color: #38bdf8;" onclick="triggerPdfPreview()">
+                    👁️ Preview Selected File
+                </button>
             </div>
 
             <div class="btn-row" style="margin-top: 30px;">
@@ -159,6 +172,19 @@
     </div>
 </div>
 
+<!-- PDF Preview Overlay Modal Window -->
+<div id="pdfModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.85); z-index:9999; justify-content:center; align-items:center; backdrop-filter: blur(4px);">
+    <div style="background:#1e293b; width:90%; max-width:750px; height:82vh; border-radius:12px; display:flex; flex-direction:column; padding:18px; border:1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom: 1px solid #334155; padding-bottom: 10px;">
+            <h3 id="modalFileName" style="margin:0; color:#f8fafc; font-size: 1.1rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80%;">PDF Preview</h3>
+            <button onclick="closePreviewModal()" style="background:#ef4444; color:#fff; border:none; padding:6px 14px; cursor:pointer; border-radius:6px; font-weight:600;">Close ✖</button>
+        </div>
+        <div id="pdfCanvasContainer" style="flex:1; overflow-y:auto; background:#0f172a; padding:15px; border-radius:8px; display:flex; flex-direction:column; align-items:center; gap:15px;">
+            <!-- Rendered Pages Canvas will appear here -->
+        </div>
+    </div>
+</div>
+
 <style>
 .hero-image-container {
     display: flex;
@@ -169,6 +195,12 @@
     width: 175px;
     height: 105px;
     filter: drop-shadow(0 8px 16px rgba(56, 189, 248, 0.25));
+}
+#pdfCanvasContainer canvas {
+    max-width: 100%;
+    height: auto !important;
+    border-radius: 4px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
 }
 </style>
 
@@ -185,6 +217,62 @@
         for(let i = 1; i <= step; i++) {
             document.getElementById(`node-${i}`).classList.add('active');
         }
+    }
+
+    // Toggle Preview button visibility
+    function togglePreviewButton() {
+        const files = document.getElementById('file-input').files;
+        const btnContainer = document.getElementById('preview-btn-container');
+        if (files.length > 0 && files[0].type === 'application/pdf') {
+            btnContainer.style.display = 'block';
+        } else {
+            btnContainer.style.display = 'none';
+        }
+    }
+
+    // Trigger PDF Preview Modal
+    function triggerPdfPreview() {
+        const files = document.getElementById('file-input').files;
+        if (files.length === 0) return;
+        const file = files[0];
+        
+        if (file.type !== 'application/pdf') {
+            alert('Preview is currently available for PDF documents.');
+            return;
+        }
+
+        const modal = document.getElementById('pdfModal');
+        const container = document.getElementById('pdfCanvasContainer');
+        document.getElementById('modalFileName').innerText = "📄 " + file.name;
+        container.innerHTML = '<p style="color:#94a3b8;">Rendering document preview...</p>';
+        modal.style.display = 'flex';
+
+        const fileReader = new FileReader();
+        fileReader.onload = function() {
+            const typedarray = new Uint8Array(this.result);
+            pdfjsLib.getDocument(typedarray).promise.then(pdf => {
+                container.innerHTML = '';
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    pdf.getPage(pageNum).then(page => {
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        const viewport = page.getViewport({ scale: 1.0 });
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+
+                        page.render({ canvasContext: context, viewport: viewport });
+                        container.appendChild(canvas);
+                    });
+                }
+            }).catch(err => {
+                container.innerHTML = '<p style="color:#ef4444;">Failed to load PDF preview.</p>';
+            });
+        };
+        fileReader.readAsArrayBuffer(file);
+    }
+
+    function closePreviewModal() {
+        document.getElementById('pdfModal').style.display = 'none';
     }
 
     async function isPrinterOnline() {
@@ -286,7 +374,6 @@
     async function checkPrinterAndProceed() {
         calculatePrice();
         
-        // Block payment if College PC script is offline
         const online = await isPrinterOnline();
         if (!online) {
             alert("⚠️ Kiosk Printer is currently OFFLINE.\n\nPlease ensure the college printer PC is powered on and ready before making a payment.");
@@ -339,52 +426,50 @@
     }
 
     async function sendToPrinter() {
-    setStep(5);
-    document.getElementById('loading-spinner').style.display = "block";
-    document.getElementById('status-text').innerText = "Printing process active. Secure queue handling your job...";
-    
-    const files = document.getElementById('file-input').files;
-    const formData = new FormData();
-    
-    for (let i = 0; i < files.length; i++) {
-        formData.append('files', files[i]);
-    }
-
-    // Modern Fix: Sending all print configurations selected on website to Flask backend
-    formData.append('copies', document.getElementById('copies').value);
-    formData.append('color_mode', document.getElementById('color-mode').value);
-    formData.append('paper_size', document.getElementById('paper-size').value);
-    formData.append('orientation', document.getElementById('orientation').value);
-    formData.append('duplex', document.getElementById('sides').value === 'double');
-    formData.append('page_range', document.getElementById('page-range').value);
-    formData.append('pages_per_sheet', document.getElementById('pages-per-sheet').value);
-
-    try {
-        const res = await fetch('/print-multiple', { method: 'POST', body: formData });
-        const data = await res.json();
+        setStep(5);
+        document.getElementById('loading-spinner').style.display = "block";
+        document.getElementById('status-text').innerText = "Printing process active. Secure queue handling your job...";
         
-        document.getElementById('loading-spinner').style.display = "none";
+        const files = document.getElementById('file-input').files;
+        const formData = new FormData();
         
-        if (res.ok) {
-            document.getElementById('status-text').innerText = "Payment successful & Print job queued! Your document will print automatically.";
-        } else {
-            document.getElementById('status-text').innerText = "Printing error: " + (data.error || "Unknown error");
+        for (let i = 0; i < files.length; i++) {
+            formData.append('files', files[i]);
         }
-    } catch (e) {
-        document.getElementById('loading-spinner').style.display = "none";
-        document.getElementById('status-text').innerText = "Network error: Server issue while sending print job.";
+
+        formData.append('copies', document.getElementById('copies').value);
+        formData.append('color_mode', document.getElementById('color-mode').value);
+        formData.append('paper_size', document.getElementById('paper-size').value);
+        formData.append('orientation', document.getElementById('orientation').value);
+        formData.append('duplex', document.getElementById('sides').value === 'double');
+        formData.append('page_range', document.getElementById('page-range').value);
+        formData.append('pages_per_sheet', document.getElementById('pages-per-sheet').value);
+
+        try {
+            const res = await fetch('/print-multiple', { method: 'POST', body: formData });
+            const data = await res.json();
+            
+            document.getElementById('loading-spinner').style.display = "none";
+            
+            if (res.ok) {
+                document.getElementById('status-text').innerText = "Payment successful & Print job queued! Your document will print automatically.";
+            } else {
+                document.getElementById('status-text').innerText = "Printing error: " + (data.error || "Unknown error");
+            }
+        } catch (e) {
+            document.getElementById('loading-spinner').style.display = "none";
+            document.getElementById('status-text').innerText = "Network error: Server issue while sending print job.";
+        }
     }
-                    }
-        
 
     function resetKiosk() {
         document.getElementById('file-input').value = "";
         document.getElementById('page-range').value = "";
         document.getElementById('copies').value = "1";
+        document.getElementById('preview-btn-container').style.display = 'none';
         document.getElementById('loading-spinner').style.display = "block";
         setStep(1);
     }
 </script>
 </body>
-                        </html>
-    
+</html>
