@@ -339,34 +339,43 @@
     }
 
     async function sendToPrinter() {
-        setStep(5);
-        document.getElementById('loading-spinner').style.display = "block";
-        document.getElementById('status-text').innerText = "Printing process active. Secure queue handling your job...";
-        
-        const files = document.getElementById('file-input').files;
-        const formData = new FormData();
-        
-        for (let i = 0; i < files.length; i++) {
-            formData.append('files', files[i]);
-        }
-        formData.append('copies', document.getElementById('copies').value);
-
-        try {
-            const res = await fetch('/print-multiple', { method: 'POST', body: formData });
-            const data = await res.json();
-            
-            document.getElementById('loading-spinner').style.display = "none";
-            
-            if (res.ok) {
-                document.getElementById('status-text').innerText = "Payment successful & Print job queued! Your document will print automatically.";
-            } else {
-                document.getElementById('status-text').innerText = "Printing error: " + (data.error || "Unknown error");
-            }
-        } catch (e) {
-            document.getElementById('loading-spinner').style.display = "none";
-            document.getElementById('status-text').innerText = "Network error: Server issue while sending print job.";
-        }
+    setStep(5);
+    document.getElementById('loading-spinner').style.display = "block";
+    document.getElementById('status-text').innerText = "Printing process active. Secure queue handling your job...";
+    
+    const files = document.getElementById('file-input').files;
+    const formData = new FormData();
+    
+    for (let i = 0; i < files.length; i++) {
+        formData.append('files', files[i]);
     }
+
+    // Modern Fix: Sending all print configurations selected on website to Flask backend
+    formData.append('copies', document.getElementById('copies').value);
+    formData.append('color_mode', document.getElementById('color-mode').value);
+    formData.append('paper_size', document.getElementById('paper-size').value);
+    formData.append('orientation', document.getElementById('orientation').value);
+    formData.append('duplex', document.getElementById('sides').value === 'double');
+    formData.append('page_range', document.getElementById('page-range').value);
+    formData.append('pages_per_sheet', document.getElementById('pages-per-sheet').value);
+
+    try {
+        const res = await fetch('/print-multiple', { method: 'POST', body: formData });
+        const data = await res.json();
+        
+        document.getElementById('loading-spinner').style.display = "none";
+        
+        if (res.ok) {
+            document.getElementById('status-text').innerText = "Payment successful & Print job queued! Your document will print automatically.";
+        } else {
+            document.getElementById('status-text').innerText = "Printing error: " + (data.error || "Unknown error");
+        }
+    } catch (e) {
+        document.getElementById('loading-spinner').style.display = "none";
+        document.getElementById('status-text').innerText = "Network error: Server issue while sending print job.";
+    }
+                    }
+        
 
     function resetKiosk() {
         document.getElementById('file-input').value = "";
