@@ -12,8 +12,9 @@ app.secret_key = 'campus_print_secure_admin_key_2026'
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# In-memory print queue
-PRINT_JOBS = []
+# In-memory queues
+PRINT_JOBS = []         # Current pending jobs waiting for printer
+PRINT_HISTORY = []      # Completed jobs history for dashboard stats & earnings
 
 # Track last time the local script polled (Heartbeat)
 last_heartbeat_time = 0
@@ -45,12 +46,41 @@ def admin_logout():
     session.pop('admin_logged_in', None)
     return redirect(url_for('admin_login'))
 
-# Admin Dashboard Route (Protected)
+# Admin Dashboard Route (Protected) - Sends stats and history to frontend
 @app.route('/admin')
 def admin_panel():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
-    return render_template('admin.html')
+    
+    # Calculate stats for social-media-style dashboard analytics
+    total_prints = len(PRINT_HISTORY)
+    total_copies = sum(job.get('copies', 1) for job in PRINT_HISTORY)
+    total_earnings = sum(job.get('total_price', 0) for job in PRINT_HISTORY)
+    
+    return render_template('admin.html', 
+                           pending_jobs=PRINT_JOBS, 
+                           history=PRINT_HISTORY,
+                           total_prints=total_prints,
+                           total_copies=total_copies,
+                           total_earnings=total_earnings)
+
+# API to fetch live stats for frontend JS auto-refresh (Instagram dashboard style)
+@app.route('/admin/stats', methods=['GET'])
+def admin_stats():
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+        
+    total_prints = len(PRINT_HISTORY)
+    total_copies = sum(job.get('copies', 1) for job in PRINT_HISTORY)
+    total_earnings = sum(job.get('total_price', 0) for job in PRINT_HISTORY)
+    
+    return jsonify({
+        'pending_count': len(PRINT_JOBS),
+        'total_prints': total_prints,
+        'total_copies': total_copies,
+        'total_earnings': total_earnings,
+        'history': PRINT_HISTORY
+    })
 
 # 1. Page Count Endpoint
 @app.route('/count-multiple-pages', methods=['POST'])
@@ -89,7 +119,10 @@ def print_multiple():
     paper_size = request.form.get('paper_size', 'A4')
     duplex = request.form.get('duplex', 'false').lower() == 'true'
     page_range = request.form.get('page_range', '')
-    pages_per_sheet = int(request.pages_per_sheet) if hasattr(request, 'pages_per_sheet') else int(request.form.get('pages_per_sheet', 1))
+    pages_per_sheet = int(request.form.get('pages_per_sheet', 1))
+    
+    # Calculate pricing (e.g., ₹2 per page for B&W, ₹5 for color as an example)
+    price_per_page = 5 if color_mode == 'color' else 2
 
     files = request.files.getlist('files')
 
@@ -102,6 +135,17 @@ def print_multiple():
                 filepath = os.path.join(UPLOAD_FOLDER, filename)
                 file.save(filepath)
 
+                # Estimate page count for pricing
+                pages = 1
+                if ext == '.pdf':
+                    try:
+                        reader = PdfReader(filepath)
+                        pages = len(reader.pages)
+                    except:
+                        pass
+                
+                total_price = pages * copies * price_per_page
+
                 PRINT_JOBS.append({
                     'id': job_id,
                     'filename': filename,
@@ -112,25 +156,26 @@ def print_multiple():
                     'paper_size': paper_size,
                     'duplex': duplex,
                     'page_range': page_range,
-                    'pages_per_sheet': pages_per_sheet
+                    'pages_per_sheet': pages_per_sheet,
+                    'total_price': total_price,
+                    'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
                 })
             else:
                 return jsonify({'error': f'Unsupported file format: {file.filename}'}), 400
 
     return jsonify({'success': True, 'message': 'Print job queued successfully!'})
 
-# 3. Local Script Polling Endpoint (Acts as Heartbeat too)
+# 3. Local Script Polling Endpoint
 @app.route('/get-pending-jobs', methods=['GET'])
 def get_pending_jobs():
     global last_heartbeat_time
-    last_heartbeat_time = time.time()  # Update last active timestamp
+    last_heartbeat_time = time.time()
     return jsonify({'jobs': PRINT_JOBS})
 
-# 3.1 Printer Status Endpoint (Fixes the Offline Popup Error)
+# 3.1 Printer Status Endpoint
 @app.route('/printer-status', methods=['GET'])
 def printer_status():
     global last_heartbeat_time
-    # If the local script polled within the last 15 seconds, consider it ONLINE
     current_time = time.time()
     is_online = (current_time - last_heartbeat_time) < 15 if last_heartbeat_time > 0 else False
     return jsonify({'online': is_online})
@@ -140,16 +185,20 @@ def printer_status():
 def download_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
-# 5. Job Complete / Delete Endpoint
+# 5. Job Complete / Move to History Endpoint
 @app.route('/complete-job/<job_id>', methods=['POST'])
 def complete_job(job_id):
-    global PRINT_JOBS
+    global PRINT_JOBS, PRINT_HISTORY
     job = next((j for j in PRINT_JOBS if j['id'] == job_id), None)
     if job:
         filepath = os.path.join(UPLOAD_FOLDER, job['filename'])
         if os.path.exists(filepath):
             os.remove(filepath)
+        
+        # Remove from active pending queue and move to history log
         PRINT_JOBS = [j for j in PRINT_JOBS if j['id'] != job_id]
+        PRINT_HISTORY.insert(0, job) # Add to top of history
+        
         return jsonify({'success': True})
     return jsonify({'error': 'Job not found'}), 404
 
