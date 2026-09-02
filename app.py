@@ -3,6 +3,7 @@ import uuid
 from flask import Flask, request, jsonify, render_template, send_from_directory, session, redirect, url_for
 from flask_cors import CORS
 from pypdf import PdfReader
+import time
 
 app = Flask(__name__)
 CORS(app)
@@ -13,6 +14,9 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # In-memory print queue
 PRINT_JOBS = []
+
+# Track last time the local script polled (Heartbeat)
+last_heartbeat_time = 0
 
 # Admin Credentials
 ADMIN_USERNAME = "campus_admin"
@@ -85,7 +89,7 @@ def print_multiple():
     paper_size = request.form.get('paper_size', 'A4')
     duplex = request.form.get('duplex', 'false').lower() == 'true'
     page_range = request.form.get('page_range', '')
-    pages_per_sheet = int(request.form.get('pages_per_sheet', 1))
+    pages_per_sheet = int(request.pages_per_sheet) if hasattr(request, 'pages_per_sheet') else int(request.form.get('pages_per_sheet', 1))
 
     files = request.files.getlist('files')
 
@@ -114,11 +118,22 @@ def print_multiple():
                 return jsonify({'error': f'Unsupported file format: {file.filename}'}), 400
 
     return jsonify({'success': True, 'message': 'Print job queued successfully!'})
-    
-# 3. Local Script Polling Endpoint
+
+# 3. Local Script Polling Endpoint (Acts as Heartbeat too)
 @app.route('/get-pending-jobs', methods=['GET'])
 def get_pending_jobs():
+    global last_heartbeat_time
+    last_heartbeat_time = time.time()  # Update last active timestamp
     return jsonify({'jobs': PRINT_JOBS})
+
+# 3.1 Printer Status Endpoint (Fixes the Offline Popup Error)
+@app.route('/printer-status', methods=['GET'])
+def printer_status():
+    global last_heartbeat_time
+    # If the local script polled within the last 15 seconds, consider it ONLINE
+    current_time = time.time()
+    is_online = (current_time - last_heartbeat_time) < 15 if last_heartbeat_time > 0 else False
+    return jsonify({'online': is_online})
 
 # 4. Download File Endpoint
 @app.route('/uploads/<filename>', methods=['GET'])
@@ -128,9 +143,6 @@ def download_file(filename):
 # 5. Job Complete / Delete Endpoint
 @app.route('/complete-job/<job_id>', methods=['POST'])
 def complete_job(job_id):
-    if not session.get('admin_logged_in'):
-        return jsonify({'error': 'Unauthorized'}), 401
-        
     global PRINT_JOBS
     job = next((j for j in PRINT_JOBS if j['id'] == job_id), None)
     if job:
