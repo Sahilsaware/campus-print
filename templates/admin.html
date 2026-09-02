@@ -3,20 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Campus Print - Admin Panel</title>
+    <title>Campus Print - Admin Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100 font-sans leading-normal tracking-normal">
     <div class="container mx-auto px-4 py-8">
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold text-gray-800">🖨️ Printer Admin Dashboard</h1>
-            <div id="printer-status-badge" class="px-4 py-2 rounded-full text-white font-semibold bg-red-500">
-                Printer Offline
-            </div>
+            <h1 class="text-3xl font-bold text-gray-800">🖨️ Campus Print Dashboard</h1>
+            <a href="/admin/logout" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-600 transition">Logout</a>
         </div>
 
         <div class="bg-white shadow-md rounded-lg p-6 mb-6">
-            <h2 class="text-xl font-semibold text-gray-700 mb-4">Pending Print Jobs</h2>
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Pending Print Queue (Live)</h2>
             <div class="overflow-x-auto">
                 <table class="min-w-full table-auto">
                     <thead>
@@ -26,12 +24,11 @@
                             <th class="py-3 px-6 text-center">Color Mode</th>
                             <th class="py-3 px-6 text-center">Orientation</th>
                             <th class="py-3 px-6 text-center">Sides (Duplex)</th>
-                            <th class="py-3 px-6 text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="jobs-table-body" class="text-gray-600 text-sm font-light">
                         <tr>
-                            <td colspan="6" class="py-4 px-6 text-center text-gray-400">Loading pending jobs...</td>
+                            <td colspan="5" class="py-4 px-6 text-center text-gray-400">Loading pending jobs...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -42,26 +39,17 @@
     <script>
         async function fetchAdminData() {
             try {
-                // Check Printer Status
-                const statusRes = await fetch('/printer-status');
-                const statusData = await statusRes.json();
-                const badge = document.getElementById('printer-status-badge');
-                if (statusData.online) {
-                    badge.className = 'px-4 py-2 rounded-full text-white font-semibold bg-green-500';
-                    badge.innerText = 'Printer Online';
-                } else {
-                    badge.className = 'px-4 py-2 rounded-full text-white font-semibold bg-red-500';
-                    badge.innerText = 'Printer Offline';
-                }
-
-                // Fetch Pending Jobs
                 const jobsRes = await fetch('/get-pending-jobs');
+                if (jobsRes.status === 401) {
+                    window.location.href = '/admin/login';
+                    return;
+                }
                 const jobsData = await jobsRes.json();
                 const tbody = document.getElementById('jobs-table-body');
                 tbody.innerHTML = '';
 
                 if (jobsData.jobs.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="6" class="py-4 px-6 text-center text-gray-400">No pending print jobs.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="5" class="py-4 px-6 text-center text-gray-400">No pending print jobs.</td></tr>`;
                     return;
                 }
 
@@ -74,10 +62,6 @@
                         <td class="py-3 px-6 text-center uppercase">${job.color_mode}</td>
                         <td class="py-3 px-6 text-center capitalize">${job.orientation}</td>
                         <td class="py-3 px-6 text-center">${job.duplex ? 'Double Sided' : 'Single Sided'}</td>
-                        <td class="py-3 px-6 text-center">
-                            <a href="/uploads/${job.filename}" target="_blank" class="bg-blue-500 text-white px-3 py-1 rounded text-xs mr-2 hover:bg-blue-600">Download</a>
-                            <button onclick="completeJob('${job.id}')" class="bg-green-500 text-white px-3 py-1 rounded text-xs hover:bg-green-600">Complete</button>
-                        </td>
                     `;
                     tbody.appendChild(row);
                 });
@@ -86,22 +70,7 @@
             }
         }
 
-        async function completeJob(jobId) {
-            if (!confirm('Mark this job as completed and delete it?')) return;
-            try {
-                const res = await fetch(`/complete-job/${jobId}`, { method: 'POST' });
-                const data = await res.json();
-                if (data.success) {
-                    fetchAdminData();
-                } else {
-                    alert('Failed to complete job');
-                }
-            } catch (err) {
-                console.error('Error:', err);
-            }
-        }
-
-        // Poll every 3 seconds
+        // Poll every 3 seconds to update queue view automatically
         setInterval(fetchAdminData, 3000);
         fetchAdminData();
     </script>
