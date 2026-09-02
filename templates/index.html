@@ -543,7 +543,7 @@
             if (res.ok) {
                 document.getElementById('status-text').innerText = "Payment successful & Print job queued!";
             } else {
-                document.getElementById('status-text': "Printing error: " + (data.error || "Unknown error");
+                document.getElementById('status-text').innerText = "Printing error: " + (data.error || "Unknown error");
             }
         } catch (e) {
             document.getElementById('loading-spinner').style.display = "none";
