@@ -1,7 +1,7 @@
 import os
 import uuid
 import time
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_from_directory, redirect, url_for
 from flask_cors import CORS
 from pypdf import PdfReader
 
@@ -18,6 +18,11 @@ LAST_PRINTER_HEARTBEAT = 0  # Timestamp in seconds
 @app.route('/')
 def home():
     return render_template('index.html')
+
+# Admin Panel Route
+@app.route('/admin')
+def admin_panel():
+    return render_template('admin.html')
 
 # 1. Page Count Endpoint
 @app.route('/count-multiple-pages', methods=['POST'])
@@ -59,7 +64,6 @@ def print_multiple():
     if 'files' not in request.files:
         return jsonify({'error': 'No files uploaded'}), 400
 
-    # Naya Update: Website se bheji gayi saari settings read ho rahi hain
     copies = int(request.form.get('copies', 1))
     orientation = request.form.get('orientation', 'portrait')
     color_mode = request.form.get('color_mode', 'bw')
@@ -79,10 +83,10 @@ def print_multiple():
                 filepath = os.path.join(UPLOAD_FOLDER, filename)
                 file.save(filepath)
 
-                # Queue me ab saare parameters store ho rahe hain
                 PRINT_JOBS.append({
                     'id': job_id,
                     'filename': filename,
+                    'original_name': file.filename,
                     'copies': copies,
                     'orientation': orientation,
                     'color_mode': color_mode,
