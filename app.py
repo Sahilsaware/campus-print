@@ -1,5 +1,6 @@
 import os
 import uuid
+import time
 from flask import Flask, request, jsonify, render_template, send_from_directory
 from flask_cors import CORS
 from pypdf import PdfReader
@@ -10,8 +11,9 @@ CORS(app)
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# In-memory print queue
+# In-memory print queue and heartbeat tracker
 PRINT_JOBS = []
+LAST_PRINTER_HEARTBEAT = 0  # Timestamp in seconds
 
 @app.route('/')
 def home():
@@ -42,7 +44,16 @@ def count_multiple_pages():
 
     return jsonify({'total_pages': total_pages})
 
-# 2. Direct Print Endpoint
+# 2. Printer Status / Heartbeat Check Endpoint
+@app.route('/printer-status', methods=['GET'])
+def printer_status():
+    global LAST_PRINTER_HEARTBEAT
+    current_time = time.time()
+    # If last poll was within 15 seconds, consider printer ONLINE
+    is_online = (current_time - LAST_PRINTER_HEARTBEAT) <= 15
+    return jsonify({'online': is_online, 'last_seen': int(current_time - LAST_PRINTER_HEARTBEAT)})
+
+# 3. Direct Print Endpoint
 @app.route('/print-multiple', methods=['POST'])
 def print_multiple():
     if 'files' not in request.files:
@@ -70,17 +81,19 @@ def print_multiple():
 
     return jsonify({'success': True, 'message': 'Print job queued successfully!'})
 
-# 3. Local Script Polling Endpoint (Local PC calls this)
+# 4. Local Script Polling Endpoint (Updates Heartbeat)
 @app.route('/get-pending-jobs', methods=['GET'])
 def get_pending_jobs():
+    global LAST_PRINTER_HEARTBEAT
+    LAST_PRINTER_HEARTBEAT = time.time()
     return jsonify({'jobs': PRINT_JOBS})
 
-# 4. Download File Endpoint for Local PC
+# 5. Download File Endpoint for Local PC
 @app.route('/uploads/<filename>', methods=['GET'])
 def download_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
-# 5. Job Complete & Cleanup Endpoint
+# 6. Job Complete & Cleanup Endpoint
 @app.route('/complete-job/<job_id>', methods=['POST'])
 def complete_job(job_id):
     global PRINT_JOBS
@@ -96,4 +109,3 @@ def complete_job(job_id):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-                                       
