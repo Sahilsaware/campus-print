@@ -1,27 +1,51 @@
 import os
 import uuid
-import time
-from flask import Flask, request, jsonify, render_template, send_from_directory, redirect, url_for
+from flask import Flask, request, jsonify, render_template, send_from_directory, session, redirect, url_for
 from flask_cors import CORS
 from pypdf import PdfReader
 
 app = Flask(__name__)
 CORS(app)
+app.secret_key = 'campus_print_secure_admin_key_2026'
 
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# In-memory print queue and heartbeat tracker
+# In-memory print queue
 PRINT_JOBS = []
-LAST_PRINTER_HEARTBEAT = 0  # Timestamp in seconds
+
+# Admin Credentials
+ADMIN_USERNAME = "campus_admin"
+ADMIN_PASSWORD = "CampusPrint@2026#Secure"
 
 @app.route('/')
 def home():
     return render_template('index.html')
 
-# Admin Panel Route
+# Admin Login Route
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            session['admin_logged_in'] = True
+            return redirect(url_for('admin_panel'))
+        else:
+            return render_template('admin_login.html', error='Invalid username or password')
+    return render_template('admin_login.html')
+
+# Admin Logout Route
+@app.route('/admin/logout')
+def admin_logout():
+    session.pop('admin_logged_in', None)
+    return redirect(url_for('admin_login'))
+
+# Admin Dashboard Route (Protected)
 @app.route('/admin')
 def admin_panel():
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
     return render_template('admin.html')
 
 # 1. Page Count Endpoint
@@ -49,16 +73,7 @@ def count_multiple_pages():
 
     return jsonify({'total_pages': total_pages})
 
-# 2. Printer Status / Heartbeat Check Endpoint
-@app.route('/printer-status', methods=['GET'])
-def printer_status():
-    global LAST_PRINTER_HEARTBEAT
-    current_time = time.time()
-    # If last poll was within 15 seconds, consider printer ONLINE
-    is_online = (current_time - LAST_PRINTER_HEARTBEAT) <= 15
-    return jsonify({'online': is_online, 'last_seen': int(current_time - LAST_PRINTER_HEARTBEAT)})
-
-# 3. Direct Print Endpoint
+# 2. Direct Print Endpoint
 @app.route('/print-multiple', methods=['POST'])
 def print_multiple():
     if 'files' not in request.files:
@@ -100,21 +115,22 @@ def print_multiple():
 
     return jsonify({'success': True, 'message': 'Print job queued successfully!'})
     
-# 4. Local Script Polling Endpoint (Updates Heartbeat)
+# 3. Local Script Polling Endpoint
 @app.route('/get-pending-jobs', methods=['GET'])
 def get_pending_jobs():
-    global LAST_PRINTER_HEARTBEAT
-    LAST_PRINTER_HEARTBEAT = time.time()
     return jsonify({'jobs': PRINT_JOBS})
 
-# 5. Download File Endpoint for Local PC
+# 4. Download File Endpoint
 @app.route('/uploads/<filename>', methods=['GET'])
 def download_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
-# 6. Job Complete & Cleanup Endpoint
+# 5. Job Complete / Delete Endpoint
 @app.route('/complete-job/<job_id>', methods=['POST'])
 def complete_job(job_id):
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+        
     global PRINT_JOBS
     job = next((j for j in PRINT_JOBS if j['id'] == job_id), None)
     if job:
