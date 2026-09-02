@@ -3,76 +3,150 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Campus Print - Admin Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <title>Campus Print Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="bg-gray-100 font-sans leading-normal tracking-normal">
-    <div class="container mx-auto px-4 py-8">
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold text-gray-800">🖨️ Campus Print Dashboard</h1>
-            <a href="/admin/logout" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-600 transition">Logout</a>
+<body class="bg-light">
+    <nav class="navbar navbar-dark bg-dark shadow-sm">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">🖨️ Campus Print Dashboard</span>
+            <a href="/admin/logout" class="btn btn-danger btn-sm">Logout</a>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <!-- Instagram/Social Media Style Analytics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card text-white bg-primary shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Earnings</h5>
+                        <h3>₹ <span id="stat-earnings">{{ total_earnings }}</span></h3>
+                        <small>Lifetime Revenue Generated</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-success shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Prints Completed</h5>
+                        <h3 id="stat-prints">{{ total_prints }}</h3>
+                        <small>Successfully Printed Files</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-info shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Copies Printed</h5>
+                        <h3 id="stat-copies">{{ total_copies }}</h3>
+                        <small>Page Volume Handled</small>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="bg-white shadow-md rounded-lg p-6 mb-6">
-            <h2 class="text-xl font-semibold text-gray-700 mb-4">Pending Print Queue (Live)</h2>
-            <div class="overflow-x-auto">
-                <table class="min-w-full table-auto">
-                    <thead>
-                        <tr class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
-                            <th class="py-3 px-6 text-left">File Name</th>
-                            <th class="py-3 px-6 text-center">Copies</th>
-                            <th class="py-3 px-6 text-center">Color Mode</th>
-                            <th class="py-3 px-6 text-center">Orientation</th>
-                            <th class="py-3 px-6 text-center">Sides (Duplex)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="jobs-table-body" class="text-gray-600 text-sm font-light">
-                        <tr>
-                            <td colspan="5" class="py-4 px-6 text-center text-gray-400">Loading pending jobs...</td>
-                        </tr>
-                    </tbody>
-                </table>
+        <!-- Pending Print Queue -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Pending Print Queue (Live)</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>File Name</th>
+                                <th>Copies</th>
+                                <th>Color Mode</th>
+                                <th>Orientation</th>
+                                <th>Price (₹)</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pending-table-body">
+                            {% if pending_jobs %}
+                                {% for job in pending_jobs %}
+                                <tr id="row-{{ job.id }}">
+                                    <td><a href="/uploads/{{ job.filename }}" target="_blank">{{ job.original_name }}</a></td>
+                                    <td>{{ job.copies }}</td>
+                                    <td><span class="badge bg-secondary">{{ job.color_mode.upper() }}</span></td>
+                                    <td>{{ job.orientation.capitalize() }}</td>
+                                    <td>₹{{ job.total_price }}</td>
+                                    <td><span class="text-warning fw-bold">Waiting for printer...</span></td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">No pending print jobs.</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Completed History Section -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Print History & Analytics Logs</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Time</th>
+                                <th>File Name</th>
+                                <th>Copies</th>
+                                <th>Color</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                            {% if history %}
+                                {% for job in history %}
+                                <tr>
+                                    <td>{{ job.timestamp }}</td>
+                                    <td>{{ job.original_name }}</td>
+                                    <td>{{ job.copies }}</td>
+                                    <td>{{ job.color_mode.upper() }}</td>
+                                    <td>₹{{ job.total_price }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">No print history available yet.</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        async function fetchAdminData() {
+        // Auto refresh stats and page content every 3 seconds to look like a live social media dashboard
+        setInterval(async () => {
             try {
-                const jobsRes = await fetch('/get-pending-jobs');
-                if (jobsRes.status === 401) {
-                    window.location.href = '/admin/login';
-                    return;
+                let res = await fetch('/admin/stats');
+                if(res.ok) {
+                    let data = await res.json();
+                    document.getElementById('stat-earnings').innerText = data.total_earnings;
+                    document.getElementById('stat-prints').innerText = data.total_prints;
+                    document.getElementById('stat-copies').innerText = data.total_copies;
+                    
+                    // If pending count or history changes, reload the page to dynamically update the tables smoothly
+                    if(data.pending_count !== document.querySelectorAll('#pending-table-body tr td a').length) {
+                        window.location.reload();
+                    }
                 }
-                const jobsData = await jobsRes.json();
-                const tbody = document.getElementById('jobs-table-body');
-                tbody.innerHTML = '';
-
-                if (jobsData.jobs.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="5" class="py-4 px-6 text-center text-gray-400">No pending print jobs.</td></tr>`;
-                    return;
-                }
-
-                jobsData.jobs.forEach(job => {
-                    const row = document.createElement('tr');
-                    row.className = 'border-b border-gray-200 hover:bg-gray-50';
-                    row.innerHTML = `
-                        <td class="py-3 px-6 text-left whitespace-nowrap font-medium text-gray-700">${job.original_name}</td>
-                        <td class="py-3 px-6 text-center">${job.copies}</td>
-                        <td class="py-3 px-6 text-center uppercase">${job.color_mode}</td>
-                        <td class="py-3 px-6 text-center capitalize">${job.orientation}</td>
-                        <td class="py-3 px-6 text-center">${job.duplex ? 'Double Sided' : 'Single Sided'}</td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            } catch (err) {
-                console.error('Error fetching admin data:', err);
+            } catch(e) {
+                console.log('Error syncing stats', e);
             }
-        }
-
-        // Poll every 3 seconds to update queue view automatically
-        setInterval(fetchAdminData, 3000);
-        fetchAdminData();
+        }, 3000);
     </script>
 </body>
 </html>
