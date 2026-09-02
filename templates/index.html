@@ -66,7 +66,7 @@
 
             <div class="btn-row" style="margin-top: 30px;">
                 <button class="btn secondary-btn" onclick="setStep(1)">Back</button>
-                <button class="btn" onclick="handleFileUploadAndNext()">Next</button>
+                <button class="btn" id="upload-next-btn" onclick="handleFileUploadAndNext()">Next</button>
             </div>
         </div>
 
@@ -115,9 +115,9 @@
             </div>
 
             <div class="form-group">
-                    <label>Copies</label>
-                    <input type="number" id="copies" value="1" min="1" max="100" oninput="if(this.value > 100) this.value = 100; if(this.value < 1) this.value = 1; calculatePrice();">
-                    <small style="color: #ff4d4d; display: block; margin-top: 4px;">⚠️ Max limit: 100 copies allowed per print.</small>
+                <label>Copies</label>
+                <input type="number" id="copies" value="1" min="1" max="100" oninput="if(this.value > 100) this.value = 100; if(this.value < 1) this.value = 1; calculatePrice();">
+                <small style="color: #ff4d4d; display: block; margin-top: 4px;">⚠️ Max limit: 100 copies allowed per print.</small>
             </div>
 
             <div class="form-group">
@@ -194,6 +194,10 @@
             return;
         }
 
+        const btn = document.getElementById('upload-next-btn');
+        btn.disabled = true;
+        btn.innerText = 'Analyzing...';
+
         const formData = new FormData();
         for (let i = 0; i < files.length; i++) {
             formData.append('files', files[i]);
@@ -210,7 +214,10 @@
                 alert(data.error || 'Failed to analyze files.');
             }
         } catch (e) {
-            alert('Error connecting to backend server.');
+            alert('Error connecting to backend server. Make sure server is running.');
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'Next';
         }
     }
 
@@ -352,5 +359,4 @@
     }
 </script>
 </body>
-    </html>
-    
+</html>
