@@ -59,7 +59,15 @@ def print_multiple():
     if 'files' not in request.files:
         return jsonify({'error': 'No files uploaded'}), 400
 
+    # Naya Update: Website se bheji gayi saari settings read ho rahi hain
     copies = int(request.form.get('copies', 1))
+    orientation = request.form.get('orientation', 'portrait')
+    color_mode = request.form.get('color_mode', 'bw')
+    paper_size = request.form.get('paper_size', 'A4')
+    duplex = request.form.get('duplex', 'false').lower() == 'true'
+    page_range = request.form.get('page_range', '')
+    pages_per_sheet = int(request.form.get('pages_per_sheet', 1))
+
     files = request.files.getlist('files')
 
     for file in files:
@@ -71,16 +79,23 @@ def print_multiple():
                 filepath = os.path.join(UPLOAD_FOLDER, filename)
                 file.save(filepath)
 
+                # Queue me ab saare parameters store ho rahe hain
                 PRINT_JOBS.append({
                     'id': job_id,
                     'filename': filename,
-                    'copies': copies
+                    'copies': copies,
+                    'orientation': orientation,
+                    'color_mode': color_mode,
+                    'paper_size': paper_size,
+                    'duplex': duplex,
+                    'page_range': page_range,
+                    'pages_per_sheet': pages_per_sheet
                 })
             else:
                 return jsonify({'error': f'Unsupported file format: {file.filename}'}), 400
 
     return jsonify({'success': True, 'message': 'Print job queued successfully!'})
-
+    
 # 4. Local Script Polling Endpoint (Updates Heartbeat)
 @app.route('/get-pending-jobs', methods=['GET'])
 def get_pending_jobs():
