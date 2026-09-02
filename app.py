@@ -2,6 +2,7 @@ import os
 import uuid
 from flask import Flask, request, jsonify, render_template, send_from_directory
 from flask_cors import CORS
+from pypdf import PdfReader
 
 app = Flask(__name__)
 CORS(app)
@@ -16,7 +17,32 @@ PRINT_JOBS = []
 def home():
     return render_template('index.html')
 
-# 1. Direct Print Endpoint (No popup/tunnel check needed)
+# 1. Page Count Endpoint
+@app.route('/count-multiple-pages', methods=['POST'])
+def count_multiple_pages():
+    if 'files' not in request.files:
+        return jsonify({'error': 'No files uploaded'}), 400
+
+    files = request.files.getlist('files')
+    total_pages = 0
+
+    for file in files:
+        if file.filename != '':
+            ext = os.path.splitext(file.filename)[1].lower()
+            if ext == '.pdf':
+                try:
+                    reader = PdfReader(file)
+                    total_pages += len(reader.pages)
+                except Exception as e:
+                    return jsonify({'error': f'Error reading PDF {file.filename}: {str(e)}'}), 400
+            elif ext in ['.png', '.jpg', '.jpeg', '.docx', '.pptx', '.doc']:
+                total_pages += 1
+            else:
+                return jsonify({'error': f'Unsupported file format: {file.filename}'}), 400
+
+    return jsonify({'total_pages': total_pages})
+
+# 2. Direct Print Endpoint
 @app.route('/print-multiple', methods=['POST'])
 def print_multiple():
     if 'files' not in request.files:
@@ -44,17 +70,17 @@ def print_multiple():
 
     return jsonify({'success': True, 'message': 'Print job queued successfully!'})
 
-# 2. Local Script Polling Endpoint (Local PC calls this)
+# 3. Local Script Polling Endpoint (Local PC calls this)
 @app.route('/get-pending-jobs', methods=['GET'])
 def get_pending_jobs():
     return jsonify({'jobs': PRINT_JOBS})
 
-# 3. Download File Endpoint for Local PC
+# 4. Download File Endpoint for Local PC
 @app.route('/uploads/<filename>', methods=['GET'])
 def download_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
-# 4. Job Complete & Cleanup Endpoint
+# 5. Job Complete & Cleanup Endpoint
 @app.route('/complete-job/<job_id>', methods=['POST'])
 def complete_job(job_id):
     global PRINT_JOBS
@@ -70,4 +96,4 @@ def complete_job(job_id):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-    
+                                       
