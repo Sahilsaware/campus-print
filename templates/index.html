@@ -266,23 +266,9 @@
         setStep(4);
     }
 
-    // Pre-Payment Printer Status Check to prevent money deduction/refund issues
-    async function checkPrinterAndProceed() {
+    function checkPrinterAndProceed() {
         calculatePrice();
-        const targetCheckUrl = 'https://aims-toilet-wit-physicians.trycloudflare.com/check-printer';
-        
-        try {
-            const res = await fetch(targetCheckUrl);
-            const data = await res.json();
-            
-            if (res.ok && data.success) {
-                processPayment();
-            } else {
-                alert(data.error || 'Printer is currently offline, disconnected, or out of paper. Please check the printer before paying.');
-            }
-        } catch (e) {
-            alert('Could not verify printer status from local server. Ensure the local listener script is running.');
-        }
+        processPayment();
     }
 
     function processPayment() {
@@ -340,22 +326,20 @@
         }
         formData.append('copies', document.getElementById('copies').value);
 
-        // Updated Cloudflare Tunnel Link 
-        const targetUrl = 'https://womens-sol-graphic-scotland.trycloudflare.com/print-multiple';
         try {
-            const res = await fetch(targetUrl, { method: 'POST', body: formData });
+            const res = await fetch('/print-multiple', { method: 'POST', body: formData });
             const data = await res.json();
             
             document.getElementById('loading-spinner').style.display = "none";
             
             if (res.ok) {
-                document.getElementById('status-text').innerText = "Payment successful & Print job completed! Please collect your documents safely from the tray.";
+                document.getElementById('status-text').innerText = "Payment successful & Print job queued! Your document will print automatically.";
             } else {
                 document.getElementById('status-text').innerText = "Printing error: " + (data.error || "Unknown error");
             }
         } catch (e) {
             document.getElementById('loading-spinner').style.display = "none";
-            document.getElementById('status-text').innerText = "Network error: Local PC listener active nahi hai ya unreachable hai.";
+            document.getElementById('status-text').innerText = "Network error: Server issue while sending print job.";
         }
     }
 
@@ -368,4 +352,5 @@
     }
 </script>
 </body>
-</html>
+    </html>
+    
