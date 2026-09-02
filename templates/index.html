@@ -18,6 +18,7 @@
         <h1>Campus Print</h1>
     </div>
 
+    <!-- Step Tracker Bar -->
     <div class="step-tracker">
         <div class="step-node active" id="node-1"><span>1</span><label>Home</label></div>
         <div class="step-line"></div>
@@ -31,6 +32,7 @@
     </div>
 
     <div class="kiosk-card">
+        <!-- Step 1: Home -->
         <div class="step-content active" id="step-1">
             <div class="hero-image-container">
                 <svg class="hero-svg" viewBox="0 0 260 150" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -55,6 +57,7 @@
             <button class="btn" onclick="setStep(2)" style="margin-top: 25px;">Next</button>
         </div>
 
+        <!-- Step 2: Upload -->
         <div class="step-content" id="step-2">
             <h2 class="styled-heading">📁 Upload Document</h2>
             <p class="info-text">Supported formats: PDF, JPG, PNG, Word, PPT</p>
@@ -68,6 +71,7 @@
             </div>
         </div>
 
+        <!-- Step 3: Print Settings -->
         <div class="step-content" id="step-3">
             <h2 class="styled-heading">⚙️ Print Settings</h2>
             
@@ -122,12 +126,9 @@
                 <input type="text" id="page-range" placeholder="All pages" oninput="calculatePrice(); updateLivePreviewIfOpen();">
             </div>
 
-            <div style="margin-top: 15px; margin-bottom: 20px; display: flex; gap: 10px;">
-                <button type="button" class="btn secondary-btn" style="flex: 1; border: 1px dashed #38bdf8; color: #38bdf8;" onclick="triggerDocumentPreview()">
-                    👁️ Preview
-                </button>
-                <button type="button" class="btn secondary-btn" style="flex: 1; border: 1px dashed #f59e0b; color: #f59e0b;" onclick="setStep(2)">
-                    ✏️ Edit / Change File
+            <div style="margin-top: 15px; margin-bottom: 20px;">
+                <button type="button" class="btn secondary-btn" style="width: 100%; border: 1px dashed #38bdf8; color: #38bdf8;" onclick="triggerDocumentPreview()">
+                    👁️ Preview Final Print Layout
                 </button>
             </div>
 
@@ -137,6 +138,7 @@
             </div>
         </div>
 
+        <!-- Step 4: Summary & Payment -->
         <div class="step-content" id="step-4">
             <h2 class="styled-heading">💳 Order Summary & Payment</h2>
             <div class="summary-box">
@@ -151,6 +153,7 @@
             </div>
         </div>
 
+        <!-- Step 5: Status -->
         <div class="step-content" id="step-5">
             <h2 class="styled-heading">🖨️ Print Status</h2>
             <div class="printing-loader">
@@ -162,6 +165,7 @@
     </div>
 </div>
 
+<!-- Modal Container -->
 <div id="pdfModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.88); z-index:9999; justify-content:center; align-items:center; backdrop-filter: blur(5px);">
     <div style="background:#1e293b; width:95%; max-width:900px; height:88vh; border-radius:12px; display:flex; flex-direction:column; padding:18px; border:1px solid #334155; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
         
@@ -539,7 +543,7 @@
             if (res.ok) {
                 document.getElementById('status-text').innerText = "Payment successful & Print job queued!";
             } else {
-                document.getElementById('status-text').innerText = "Printing error: " + (data.error || "Unknown error");
+                document.getElementById('status-text': "Printing error: " + (data.error || "Unknown error");
             }
         } catch (e) {
             document.getElementById('loading-spinner').style.display = "none";
