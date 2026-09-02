@@ -6,8 +6,6 @@
     <title>Campus Print</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-    
-    <!-- PDF.js Library Integration -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -20,7 +18,6 @@
         <h1>Campus Print</h1>
     </div>
 
-    <!-- 5-Step Tracker Bar -->
     <div class="step-tracker">
         <div class="step-node active" id="node-1"><span>1</span><label>Home</label></div>
         <div class="step-line"></div>
@@ -54,7 +51,6 @@
                     <circle cx="65" cy="95" r="4" fill="#475569"/>
                 </svg>
             </div>
-
             <h2 class="styled-heading">Welcome to Campus Print</h2>
             <p class="info-text">Fast and secure printing for students. Upload, customize, and collect instantly.</p>
             <button class="btn" onclick="setStep(2)" style="margin-top: 25px;">Next</button>
@@ -64,25 +60,23 @@
         <div class="step-content" id="step-2">
             <h2 class="styled-heading">📁 Upload Document</h2>
             <p class="info-text">Supported formats: PDF, JPG, PNG, Word, PPT</p>
-            
             <div class="form-group" style="margin-top: 20px;">
                 <label>Select your files to print</label>
                 <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.ppt,.pptx">
             </div>
-
             <div class="btn-row" style="margin-top: 30px;">
                 <button class="btn secondary-btn" onclick="setStep(1)">Back</button>
                 <button class="btn" id="upload-next-btn" onclick="handleFileUploadAndNext()">Next</button>
             </div>
         </div>
 
-        <!-- Step 3: Print Settings & Live Dynamic Preview -->
+        <!-- Step 3: Print Settings -->
         <div class="step-content" id="step-3">
             <h2 class="styled-heading">⚙️ Print Settings</h2>
             
             <div class="form-group">
                 <label>Color Mode</label>
-                <select id="color-mode" onchange="updateLivePreview(); calculatePrice();">
+                <select id="color-mode" onchange="calculatePrice()">
                     <option value="bw">Black & White (₹2/page)</option>
                     <option value="color">Color (₹10/page)</option>
                 </select>
@@ -113,7 +107,7 @@
 
             <div class="form-group">
                 <label>Pages per Sheet</label>
-                <select id="pages-per-sheet" onchange="updateLivePreview(); calculatePrice();">
+                <select id="pages-per-sheet" onchange="calculatePrice()">
                     <option value="1">1 Page per sheet</option>
                     <option value="2">2 Pages per sheet</option>
                     <option value="4">4 Pages per sheet</option>
@@ -128,10 +122,9 @@
 
             <div class="form-group">
                 <label>Page Range (e.g., 1-5 or leave blank for all)</label>
-                <input type="text" id="page-range" placeholder="All pages" oninput="updateLivePreview(); calculatePrice();">
+                <input type="text" id="page-range" placeholder="All pages" oninput="calculatePrice()">
             </div>
 
-            <!-- Dynamic Live Preview Trigger Button -->
             <div style="margin-top: 15px; margin-bottom: 20px;">
                 <button type="button" class="btn secondary-btn" style="width: 100%; border: 1px dashed #38bdf8; color: #38bdf8;" onclick="triggerPdfPreview()">
                     👁️ Preview Final Print Layout
@@ -153,7 +146,6 @@
                 <div class="summary-row"><span>Copies:</span><span id="summary-copies">1</span></div>
                 <div class="summary-row total-price"><span>Total Amount:</span><span id="summary-total">₹0</span></div>
             </div>
-            
             <div class="btn-row">
                 <button class="btn secondary-btn" onclick="setStep(3)">Back</button>
                 <button class="btn pay-btn" onclick="checkPrinterAndProceed()">Proceed to Payment</button>
@@ -172,44 +164,54 @@
     </div>
 </div>
 
-<!-- PDF Preview Dynamic Overlay Modal Window -->
-<div id="pdfModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.85); z-index:9999; justify-content:center; align-items:center; backdrop-filter: blur(4px);">
-    <div style="background:#1e293b; width:90%; max-width:750px; height:82vh; border-radius:12px; display:flex; flex-direction:column; padding:18px; border:1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+<!-- Modal with In-Preview Dynamic Edit Panel -->
+<div id="pdfModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.88); z-index:9999; justify-content:center; align-items:center; backdrop-filter: blur(5px);">
+    <div style="background:#1e293b; width:95%; max-width:900px; height:88vh; border-radius:12px; display:flex; flex-direction:column; padding:18px; border:1px solid #334155; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
+        
+        <!-- Header -->
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom: 1px solid #334155; padding-bottom: 10px;">
-            <div>
-                <h3 id="modalFileName" style="margin:0; color:#f8fafc; font-size: 1.1rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Print Preview</h3>
-                <small id="modalSettingsSummary" style="color:#38bdf8;">Settings applied live</small>
-            </div>
+            <h3 id="modalFileName" style="margin:0; color:#f8fafc; font-size: 1.1rem;">📄 Print Preview</h3>
             <button onclick="closePreviewModal()" style="background:#ef4444; color:#fff; border:none; padding:6px 14px; cursor:pointer; border-radius:6px; font-weight:600;">Close ✖</button>
         </div>
-        <div id="pdfCanvasContainer" style="flex:1; overflow-y:auto; background:#0f172a; padding:15px; border-radius:8px; display:flex; flex-direction:column; align-items:center; gap:15px;">
-            <!-- Rendered pages canvas will appear here -->
+
+        <!-- In-Modal Dynamic Controls -->
+        <div style="display:flex; gap:12px; wrap:wrap; background:#0f172a; padding:12px; border-radius:8px; margin-bottom:12px; align-items:center;">
+            <div style="flex:1; min-width:140px;">
+                <label style="font-size:12px; color:#94a3b8; display:block;">Color</label>
+                <select id="modal-color" style="width:100%; padding:6px; background:#1e293b; color:#fff; border:1px solid #475569; border-radius:4px;" onchange="syncAndRenderModal('color')">
+                    <option value="bw">Black & White</option>
+                    <option value="color">Color</option>
+                </select>
+            </div>
+            <div style="flex:1; min-width:140px;">
+                <label style="font-size:12px; color:#94a3b8; display:block;">Pages per Sheet</label>
+                <select id="modal-pps" style="width:100%; padding:6px; background:#1e293b; color:#fff; border:1px solid #475569; border-radius:4px;" onchange="syncAndRenderModal('pps')">
+                    <option value="1">1 Page per sheet</option>
+                    <option value="2">2 Pages per sheet</option>
+                    <option value="4">4 Pages per sheet</option>
+                </select>
+            </div>
+            <div style="flex:1.5; min-width:160px;">
+                <label style="font-size:12px; color:#94a3b8; display:block;">Page Range</label>
+                <input type="text" id="modal-range" placeholder="e.g. 1-3" style="width:100%; padding:6px; background:#1e293b; color:#fff; border:1px solid #475569; border-radius:4px;" oninput="syncAndRenderModal('range')">
+            </div>
+        </div>
+
+        <!-- Canvas Display Area -->
+        <div id="pdfCanvasContainer" style="flex:1; overflow-y:auto; background:#0f172a; padding:15px; border-radius:8px; display:flex; flex-direction:column; align-items:center; gap:20px;">
         </div>
     </div>
 </div>
 
 <style>
-.hero-image-container {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 18px;
-}
-.hero-svg {
-    width: 175px;
-    height: 105px;
-    filter: drop-shadow(0 8px 16px rgba(56, 189, 248, 0.25));
-}
+.hero-image-container { display: flex; justify-content: center; margin-bottom: 18px; }
+.hero-svg { width: 175px; height: 105px; filter: drop-shadow(0 8px 16px rgba(56, 189, 248, 0.25)); }
 #pdfCanvasContainer canvas {
-    max-width: 100%;
-    height: auto !important;
+    background: #ffffff;
     border-radius: 4px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-    transition: filter 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
-/* CSS Filter applied dynamically for B&W selection */
-.bw-filter {
-    filter: grayscale(100%) contrast(120%) !important;
-}
+.bw-filter { filter: grayscale(100%) contrast(120%) !important; }
 </style>
 
 <script>
@@ -221,7 +223,6 @@
     function setStep(step) {
         document.querySelectorAll('.step-content').forEach(s => s.classList.remove('active'));
         document.querySelectorAll('.step-node').forEach(n => n.classList.remove('active'));
-        
         document.getElementById(`step-${step}`).classList.add('active');
         for(let i = 1; i <= step; i++) {
             document.getElementById(`node-${i}`).classList.add('active');
@@ -253,34 +254,105 @@
         return pages.size > 0 ? pages : new Set([...Array(maxPages).keys()].map(i => i + 1));
     }
 
-    function renderPagesWithSettings() {
+    async function renderPagesWithSettings() {
         if (!currentPdfDoc) return;
         const container = document.getElementById('pdfCanvasContainer');
         container.innerHTML = '';
 
-        const colorMode = document.getElementById('color-mode').value;
-        const pageRangeStr = document.getElementById('page-range').value;
-        const allowedPages = getParsedPageSet(pageRangeStr, currentPdfDoc.numPages);
+        const colorMode = document.getElementById('modal-color').value;
+        const pageRangeStr = document.getElementById('modal-range').value;
+        const pps = parseInt(document.getElementById('modal-pps').value) || 1;
+        const allowedPages = Array.from(getParsedPageSet(pageRangeStr, currentPdfDoc.numPages));
 
-        document.getElementById('modalSettingsSummary').innerText = 
-            `Color: ${colorMode.toUpperCase()} | Pages: ${allowedPages.size} selected`;
+        // Chunk pages by Pages Per Sheet (1, 2, or 4)
+        const pageGroups = [];
+        for (let i = 0; i < allowedPages.length; i += pps) {
+            pageGroups.push(allowedPages.slice(i, i + pps));
+        }
 
-        allowedPages.forEach(pageNum => {
-            currentPdfDoc.getPage(pageNum).then(page => {
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
+        for (let groupIndex = 0; groupIndex < pageGroups.length; groupIndex++) {
+            const pageNums = pageGroups[groupIndex];
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            if (colorMode === 'bw') canvas.classList.add('bw-filter');
+
+            if (pps === 1) {
+                const page = await currentPdfDoc.getPage(pageNums[0]);
                 const viewport = page.getViewport({ scale: 1.0 });
-                canvas.height = viewport.height;
                 canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+            } 
+            else if (pps === 2) {
+                const page1 = await currentPdfDoc.getPage(pageNums[0]);
+                const vp1 = page1.getViewport({ scale: 0.7 });
+                const page2 = pageNums[1] ? await currentPdfDoc.getPage(pageNums[1]) : null;
+                const vp2 = page2 ? page2.getViewport({ scale: 0.7 }) : null;
 
-                if (colorMode === 'bw') {
-                    canvas.classList.add('bw-filter');
+                const sheetWidth = vp1.width * 2 + 30;
+                const sheetHeight = vp1.height + 20;
+
+                canvas.width = sheetWidth;
+                canvas.height = sheetHeight;
+
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, sheetWidth, sheetHeight);
+
+                // Render Left Page
+                const c1 = document.createElement('canvas');
+                c1.width = vp1.width; c1.height = vp1.height;
+                await page1.render({ canvasContext: c1.getContext('2d'), viewport: vp1 }).promise;
+                ctx.drawImage(c1, 10, 10);
+
+                // Render Right Page
+                if (page2) {
+                    const c2 = document.createElement('canvas');
+                    c2.width = vp2.width; c2.height = vp2.height;
+                    await page2.render({ canvasContext: c2.getContext('2d'), viewport: vp2 }).promise;
+                    ctx.drawImage(c2, vp1.width + 20, 10);
                 }
+            } 
+            else if (pps === 4) {
+                const page1 = await currentPdfDoc.getPage(pageNums[0]);
+                const vp = page1.getViewport({ scale: 0.5 });
 
-                page.render({ canvasContext: context, viewport: viewport });
-                container.appendChild(canvas);
-            });
-        });
+                const sheetWidth = vp.width * 2 + 30;
+                const sheetHeight = vp.height * 2 + 30;
+
+                canvas.width = sheetWidth;
+                canvas.height = sheetHeight;
+
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, sheetWidth, sheetHeight);
+
+                const offsets = [
+                    { x: 10, y: 10 },
+                    { x: vp.width + 20, y: 10 },
+                    { x: 10, y: vp.height + 20 },
+                    { x: vp.width + 20, y: vp.height + 20 }
+                ];
+
+                for (let idx = 0; idx < pageNums.length; idx++) {
+                    const p = await currentPdfDoc.getPage(pageNums[idx]);
+                    const c = document.createElement('canvas');
+                    c.width = vp.width; c.height = vp.height;
+                    await p.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+                    ctx.drawImage(c, offsets[idx].x, offsets[idx].y);
+                }
+            }
+
+            container.appendChild(canvas);
+        }
+    }
+
+    function syncAndRenderModal(changedFrom) {
+        if (changedFrom === 'color') document.getElementById('color-mode').value = document.getElementById('modal-color').value;
+        if (changedFrom === 'pps') document.getElementById('pages-per-sheet').value = document.getElementById('modal-pps').value;
+        if (changedFrom === 'range') document.getElementById('page-range').value = document.getElementById('modal-range').value;
+
+        calculatePrice();
+        renderPagesWithSettings();
     }
 
     function triggerPdfPreview() {
@@ -290,16 +362,19 @@
             return;
         }
         const file = files[0];
-        
         if (file.type !== 'application/pdf') {
             alert('Live visual preview is supported for PDF files.');
             return;
         }
 
+        document.getElementById('modal-color').value = document.getElementById('color-mode').value;
+        document.getElementById('modal-pps').value = document.getElementById('pages-per-sheet').value;
+        document.getElementById('modal-range').value = document.getElementById('page-range').value;
+
         const modal = document.getElementById('pdfModal');
         const container = document.getElementById('pdfCanvasContainer');
         document.getElementById('modalFileName').innerText = "📄 " + file.name;
-        container.innerHTML = '<p style="color:#94a3b8;">Applying print settings & rendering live preview...</p>';
+        container.innerHTML = '<p style="color:#94a3b8;">Rendering live multi-page layout preview...</p>';
         modal.style.display = 'flex';
 
         const fileReader = new FileReader();
@@ -313,13 +388,6 @@
             });
         };
         fileReader.readAsArrayBuffer(file);
-    }
-
-    function updateLivePreview() {
-        const modal = document.getElementById('pdfModal');
-        if (modal.style.display === 'flex' && currentPdfDoc) {
-            renderPagesWithSettings();
-        }
     }
 
     function closePreviewModal() {
@@ -363,7 +431,7 @@
                 alert(data.error || 'Failed to analyze files.');
             }
         } catch (e) {
-            alert('Error connecting to backend server. Make sure server is running.');
+            alert('Error connecting to backend server.');
         } finally {
             btn.disabled = false;
             btn.innerText = 'Next';
@@ -380,16 +448,10 @@
         const copiesInput = document.getElementById('copies');
         let copies = parseInt(copiesInput.value) || 1;
         
-        if (copies > 100) {
-            copies = 100;
-            copiesInput.value = 100;
-        } else if (copies < 1) {
-            copies = 1;
-            copiesInput.value = 1;
-        }
+        if (copies > 100) { copies = 100; copiesInput.value = 100; } 
+        else if (copies < 1) { copies = 1; copiesInput.value = 1; }
 
         const pageRangeStr = document.getElementById('page-range').value;
-
         computedPagesToPrint = parsePageRange(pageRangeStr, totalDetectedPages);
 
         let baseRate = colorMode === 'color' ? 10.0 : 2.0;
@@ -408,13 +470,11 @@
 
     async function checkPrinterAndProceed() {
         calculatePrice();
-        
         const online = await isPrinterOnline();
         if (!online) {
             alert("⚠️ Kiosk Printer is currently OFFLINE.\n\nPlease ensure the college printer PC is powered on and ready before making a payment.");
             return;
         }
-
         processPayment();
     }
 
@@ -430,32 +490,17 @@
             "currency": "INR",
             "name": "Campus Print",
             "description": "Document Printing Fee",
-            "handler": function (response){
-                sendToPrinter();
-            },
-            "modal": {
-                "ondismiss": function(){
-                    console.log('Payment modal closed by user');
-                }
-            },
-            "prefill": {
-                "name": "Student",
-                "email": "student@campus.edu",
-                "contact": "9999999999"
-            },
-            "theme": {
-                "color": "#38bdf8"
-            }
+            "handler": function (response){ sendToPrinter(); },
+            "modal": { "ondismiss": function(){ console.log('Payment modal closed'); } },
+            "prefill": { "name": "Student", "email": "student@campus.edu", "contact": "9999999999" },
+            "theme": { "color": "#38bdf8" }
         };
         
         try {
             var rzp1 = new Razorpay(options);
-            rzp1.on('payment.failed', function (response){
-                alert("Payment Failed: " + response.error.description);
-            });
+            rzp1.on('payment.failed', function (response){ alert("Payment Failed: " + response.error.description); });
             rzp1.open();
         } catch (err) {
-            console.warn("Razorpay script error, triggering direct print fallback.");
             sendToPrinter();
         }
     }
@@ -483,17 +528,15 @@
         try {
             const res = await fetch('/print-multiple', { method: 'POST', body: formData });
             const data = await res.json();
-            
             document.getElementById('loading-spinner').style.display = "none";
-            
             if (res.ok) {
-                document.getElementById('status-text').innerText = "Payment successful & Print job queued! Your document will print automatically.";
+                document.getElementById('status-text').innerText = "Payment successful & Print job queued!";
             } else {
                 document.getElementById('status-text').innerText = "Printing error: " + (data.error || "Unknown error");
             }
         } catch (e) {
             document.getElementById('loading-spinner').style.display = "none";
-            document.getElementById('status-text').innerText = "Network error: Server issue while sending print job.";
+            document.getElementById('status-text').innerText = "Network error while sending job.";
         }
     }
 
