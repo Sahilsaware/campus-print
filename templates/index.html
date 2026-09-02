@@ -1,4 +1,73 @@
-<!-- Step 3: Print Settings -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Print</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+</head>
+<body>
+
+<div class="kiosk-container">
+    <div class="header-section">
+        <h1>Campus Print</h1>
+    </div>
+
+    <div class="step-tracker">
+        <div class="step-node active" id="node-1"><span>1</span><label>Home</label></div>
+        <div class="step-line"></div>
+        <div class="step-node" id="node-2"><span>2</span><label>Upload</label></div>
+        <div class="step-line"></div>
+        <div class="step-node" id="node-3"><span>3</span><label>Settings</label></div>
+        <div class="step-line"></div>
+        <div class="step-node" id="node-4"><span>4</span><label>Payment</label></div>
+        <div class="step-line"></div>
+        <div class="step-node" id="node-5"><span>5</span><label>Print</label></div>
+    </div>
+
+    <div class="kiosk-card">
+        <div class="step-content active" id="step-1">
+            <div class="hero-image-container">
+                <svg class="hero-svg" viewBox="0 0 260 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <ellipse cx="130" cy="135" rx="70" ry="10" fill="#38bdf8" opacity="0.25" filter="blur(6px)"/>
+                    <rect x="45" y="55" width="170" height="75" rx="14" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5"/>
+                    <path d="M75 55V32C75 26.4772 79.4772 22 85 22H175C180.523 22 185 26.4772 185 32V55" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4 4"/>
+                    <rect x="100" y="28" width="60" height="35" rx="4" fill="#f8fafc" opacity="0.9"/>
+                    <rect x="108" y="36" width="35" height="3" rx="1.5" fill="#0f172a"/>
+                    <rect x="108" y="44" width="44" height="2" rx="1" fill="#38bdf8"/>
+                    <path d="M80 105H180V132C180 134.761 177.761 137 175 137H85C82.2386 137 80 134.761 80 132V105Z" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+                    <rect x="94" y="113" width="72" height="3" rx="1.5" fill="#f8fafc" opacity="0.8"/>
+                    <rect x="94" y="121" width="48" height="3" rx="1.5" fill="#38bdf8"/>
+                    <rect x="155" y="70" width="40" height="18" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+                    <circle cx="166" cy="79" r="3.5" fill="#38bdf8"/>
+                    <circle cx="182" cy="79" r="3.5" fill="#10b981"/>
+                    <circle cx="65" cy="80" r="4" fill="#38bdf8"/>
+                    <circle cx="65" cy="95" r="4" fill="#475569"/>
+                </svg>
+            </div>
+            <h2 class="styled-heading">Welcome to Campus Print</h2>
+            <p class="info-text">Fast and secure printing for students. Upload, customize, and collect instantly.</p>
+            <button class="btn" onclick="setStep(2)" style="margin-top: 25px;">Next</button>
+        </div>
+
+        <div class="step-content" id="step-2">
+            <h2 class="styled-heading">📁 Upload Document</h2>
+            <p class="info-text">Supported formats: PDF, JPG, PNG, Word, PPT</p>
+            <div class="form-group" style="margin-top: 20px;">
+                <label>Select your files to print</label>
+                <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.ppt,.pptx">
+            </div>
+            <div class="btn-row" style="margin-top: 30px;">
+                <button class="btn secondary-btn" onclick="setStep(1)">Back</button>
+                <button class="btn" id="upload-next-btn" onclick="handleFileUploadAndNext()">Next</button>
+            </div>
+        </div>
+
         <div class="step-content" id="step-3">
             <h2 class="styled-heading">⚙️ Print Settings</h2>
             
@@ -53,7 +122,6 @@
                 <input type="text" id="page-range" placeholder="All pages" oninput="calculatePrice(); updateLivePreviewIfOpen();">
             </div>
 
-            <!-- Action Buttons for Preview and Edit -->
             <div style="margin-top: 15px; margin-bottom: 20px; display: flex; gap: 10px;">
                 <button type="button" class="btn secondary-btn" style="flex: 1; border: 1px dashed #38bdf8; color: #38bdf8;" onclick="triggerDocumentPreview()">
                     👁️ Preview
@@ -68,3 +136,426 @@
                 <button class="btn" onclick="goToStep4()">Next</button>
             </div>
         </div>
+
+        <div class="step-content" id="step-4">
+            <h2 class="styled-heading">💳 Order Summary & Payment</h2>
+            <div class="summary-box">
+                <div class="summary-row"><span>Total Pages Detected:</span><span id="summary-pages">0</span></div>
+                <div class="summary-row"><span>Selected Pages to Print:</span><span id="summary-print-pages">0</span></div>
+                <div class="summary-row"><span>Copies:</span><span id="summary-copies">1</span></div>
+                <div class="summary-row total-price"><span>Total Amount:</span><span id="summary-total">₹0</span></div>
+            </div>
+            <div class="btn-row">
+                <button class="btn secondary-btn" onclick="setStep(3)">Back</button>
+                <button class="btn pay-btn" onclick="checkPrinterAndProceed()">Proceed to Payment</button>
+            </div>
+        </div>
+
+        <div class="step-content" id="step-5">
+            <h2 class="styled-heading">🖨️ Print Status</h2>
+            <div class="printing-loader">
+                <div class="spinner" id="loading-spinner"></div>
+                <p id="status-text" class="status-msg">Printing process active. Your job is securely in the queue...</p>
+            </div>
+            <button class="btn reset-btn" onclick="resetKiosk()">Print Another File</button>
+        </div>
+    </div>
+</div>
+
+<div id="pdfModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.88); z-index:9999; justify-content:center; align-items:center; backdrop-filter: blur(5px);">
+    <div style="background:#1e293b; width:95%; max-width:900px; height:88vh; border-radius:12px; display:flex; flex-direction:column; padding:18px; border:1px solid #334155; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom: 1px solid #334155; padding-bottom: 10px;">
+            <div>
+                <h3 id="modalFileName" style="margin:0; color:#f8fafc; font-size: 1.1rem;">📄 Document Preview</h3>
+                <small id="modalSubTitle" style="color:#38bdf8;">Real-time Settings Applied</small>
+            </div>
+            <button onclick="closePreviewModal()" style="background:#ef4444; color:#fff; border:none; padding:6px 14px; cursor:pointer; border-radius:6px; font-weight:600;">Close ✖</button>
+        </div>
+
+        <div id="pdfCanvasContainer" style="flex:1; overflow-y:auto; background:#0f172a; padding:15px; border-radius:8px; display:flex; flex-direction:column; align-items:center; gap:20px;">
+        </div>
+    </div>
+</div>
+
+<style>
+.hero-image-container { display: flex; justify-content: center; margin-bottom: 18px; }
+.hero-svg { width: 175px; height: 105px; filter: drop-shadow(0 8px 16px rgba(56, 189, 248, 0.25)); }
+#pdfCanvasContainer canvas, #pdfCanvasContainer img {
+    background: #ffffff;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    max-width: 100%;
+}
+.bw-filter { filter: grayscale(100%) contrast(120%) !important; }
+</style>
+
+<script>
+    let totalDetectedPages = 0;
+    let computedPagesToPrint = 0;
+    let finalCalculatedCost = 0;
+    let currentPdfDoc = null;
+    let currentImageSrc = null;
+
+    function setStep(step) {
+        document.querySelectorAll('.step-content').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.step-node').forEach(n => n.classList.remove('active'));
+        document.getElementById(`step-${step}`).classList.add('active');
+        for(let i = 1; i <= step; i++) {
+            document.getElementById(`node-${i}`).classList.add('active');
+        }
+    }
+
+    function getParsedPageSet(rangeStr, maxPages) {
+        if (!rangeStr.trim()) {
+            const allPages = new Set();
+            for (let i = 1; i <= maxPages; i++) allPages.add(i);
+            return allPages;
+        }
+        const pages = new Set();
+        const parts = rangeStr.split(',');
+
+        parts.forEach(part => {
+            if (part.includes('-')) {
+                const [start, end] = part.split('-').map(Number);
+                if (start && end) {
+                    for (let i = start; i <= Math.min(end, maxPages); i++) {
+                        if (i >= 1) pages.add(i);
+                    }
+                }
+            } else {
+                const p = Number(part);
+                if (p && p >= 1 && p <= maxPages) pages.add(p);
+            }
+        });
+        return pages.size > 0 ? pages : new Set([...Array(maxPages).keys()].map(i => i + 1));
+    }
+
+    async function renderPagesWithSettings() {
+        const container = document.getElementById('pdfCanvasContainer');
+        container.innerHTML = '';
+
+        const colorMode = document.getElementById('color-mode').value;
+        const orientation = document.getElementById('orientation').value;
+        const pps = parseInt(document.getElementById('pages-per-sheet').value) || 1;
+
+        if (currentImageSrc) {
+            document.getElementById('modalSubTitle').innerText = `Color: ${colorMode.toUpperCase()} | Orientation: ${orientation.toUpperCase()}`;
+            const img = document.createElement('img');
+            img.src = currentImageSrc;
+            if (colorMode === 'bw') img.classList.add('bw-filter');
+            if (orientation === 'landscape') {
+                img.style.transform = 'rotate(90deg)';
+                img.style.margin = '40px 0';
+            }
+            container.appendChild(img);
+            return;
+        }
+
+        if (!currentPdfDoc) return;
+        
+        const pageRangeStr = document.getElementById('page-range').value;
+        const allowedPages = Array.from(getParsedPageSet(pageRangeStr, currentPdfDoc.numPages));
+
+        document.getElementById('modalSubTitle').innerText = 
+            `Color: ${colorMode.toUpperCase()} | Orientation: ${orientation.toUpperCase()} | Grid: ${pps} per sheet`;
+
+        const pageGroups = [];
+        for (let i = 0; i < allowedPages.length; i += pps) {
+            pageGroups.push(allowedPages.slice(i, i + pps));
+        }
+
+        for (let groupIndex = 0; groupIndex < pageGroups.length; groupIndex++) {
+            const pageNums = pageGroups[groupIndex];
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            if (colorMode === 'bw') canvas.classList.add('bw-filter');
+
+            if (pps === 1) {
+                const page = await currentPdfDoc.getPage(pageNums[0]);
+                let scale = 1.0;
+                let viewport = page.getViewport({ scale: scale });
+
+                if (orientation === 'landscape' && viewport.width < viewport.height) {
+                    viewport = page.getViewport({ scale: scale, rotation: 90 });
+                }
+
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+            } 
+            else if (pps === 2) {
+                const page1 = await currentPdfDoc.getPage(pageNums[0]);
+                const vp1 = page1.getViewport({ scale: 0.6 });
+                const page2 = pageNums[1] ? await currentPdfDoc.getPage(pageNums[1]) : null;
+                const vp2 = page2 ? page2.getViewport({ scale: 0.6 }) : null;
+
+                const sheetWidth = vp1.width * 2 + 30;
+                const sheetHeight = vp1.height + 20;
+
+                canvas.width = sheetWidth;
+                canvas.height = sheetHeight;
+
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, sheetWidth, sheetHeight);
+
+                const c1 = document.createElement('canvas');
+                c1.width = vp1.width; c1.height = vp1.height;
+                await page1.render({ canvasContext: c1.getContext('2d'), viewport: vp1 }).promise;
+                ctx.drawImage(c1, 10, 10);
+
+                if (page2) {
+                    const c2 = document.createElement('canvas');
+                    c2.width = vp2.width; c2.height = vp2.height;
+                    await page2.render({ canvasContext: c2.getContext('2d'), viewport: vp2 }).promise;
+                    ctx.drawImage(c2, vp1.width + 20, 10);
+                }
+            } 
+            else if (pps === 4) {
+                const page1 = await currentPdfDoc.getPage(pageNums[0]);
+                const vp = page1.getViewport({ scale: 0.45 });
+
+                const sheetWidth = vp.width * 2 + 30;
+                const sheetHeight = vp.height * 2 + 30;
+
+                canvas.width = sheetWidth;
+                canvas.height = sheetHeight;
+
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, sheetWidth, sheetHeight);
+
+                const offsets = [
+                    { x: 10, y: 10 },
+                    { x: vp.width + 20, y: 10 },
+                    { x: 10, y: vp.height + 20 },
+                    { x: vp.width + 20, y: vp.height + 20 }
+                ];
+
+                for (let idx = 0; idx < pageNums.length; idx++) {
+                    const p = await currentPdfDoc.getPage(pageNums[idx]);
+                    const c = document.createElement('canvas');
+                    c.width = vp.width; c.height = vp.height;
+                    await p.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+                    ctx.drawImage(c, offsets[idx].x, offsets[idx].y);
+                }
+            }
+
+            container.appendChild(canvas);
+        }
+    }
+
+    function updateLivePreviewIfOpen() {
+        const modal = document.getElementById('pdfModal');
+        if (modal.style.display === 'flex') {
+            renderPagesWithSettings();
+        }
+    }
+
+    function triggerDocumentPreview() {
+        const files = document.getElementById('file-input').files;
+        if (files.length === 0) {
+            alert('No file selected.');
+            return;
+        }
+        const file = files[0];
+        const ext = file.name.split('.').pop().toLowerCase();
+
+        if (['doc', 'docx', 'ppt', 'pptx'].includes(ext)) {
+            alert("Visual preview is available for PDF and Image files. Your document will be printed directly with all applied print settings.");
+            return;
+        }
+
+        const modal = document.getElementById('pdfModal');
+        const container = document.getElementById('pdfCanvasContainer');
+        document.getElementById('modalFileName').innerText = "📄 " + file.name;
+        container.innerHTML = '<p style="color:#94a3b8;">Rendering live layout preview...</p>';
+        modal.style.display = 'flex';
+
+        currentPdfDoc = null;
+        currentImageSrc = null;
+
+        if (['jpg', 'jpeg', 'png'].includes(ext)) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentImageSrc = e.target.result;
+                renderPagesWithSettings();
+            };
+            reader.readAsDataURL(file);
+        } else if (ext === 'pdf') {
+            const fileReader = new FileReader();
+            fileReader.onload = function() {
+                const typedarray = new Uint8Array(this.result);
+                pdfjsLib.getDocument(typedarray).promise.then(pdf => {
+                    currentPdfDoc = pdf;
+                    renderPagesWithSettings();
+                }).catch(err => {
+                    container.innerHTML = '<p style="color:#ef4444;">Failed to load PDF preview.</p>';
+                });
+            };
+            fileReader.readAsArrayBuffer(file);
+        }
+    }
+
+    function closePreviewModal() {
+        document.getElementById('pdfModal').style.display = 'none';
+    }
+
+    async function isPrinterOnline() {
+        try {
+            const res = await fetch('/printer-status');
+            const data = await res.json();
+            return data.online;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    async function handleFileUploadAndNext() {
+        const files = document.getElementById('file-input').files;
+        if (files.length === 0) {
+            alert('Please select at least one file before proceeding.');
+            return;
+        }
+
+        const btn = document.getElementById('upload-next-btn');
+        btn.disabled = true;
+        btn.innerText = 'Analyzing...';
+
+        const formData = new FormData();
+        for (let i = 0; i < files.length; i++) {
+            formData.append('files', files[i]);
+        }
+
+        try {
+            const res = await fetch('/count-multiple-pages', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (res.ok) {
+                totalDetectedPages = data.total_pages;
+                calculatePrice();
+                setStep(3);
+            } else {
+                alert(data.error || 'Failed to analyze files.');
+            }
+        } catch (e) {
+            alert('Error connecting to backend server.');
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'Next';
+        }
+    }
+
+    function parsePageRange(rangeStr, maxPages) {
+        if (!rangeStr.trim()) return maxPages;
+        return getParsedPageSet(rangeStr, maxPages).size;
+    }
+
+    function calculatePrice() {
+        const colorMode = document.getElementById('color-mode').value;
+        const copiesInput = document.getElementById('copies');
+        let copies = parseInt(copiesInput.value) || 1;
+        
+        if (copies > 100) { copies = 100; copiesInput.value = 100; } 
+        else if (copies < 1) { copies = 1; copiesInput.value = 1; }
+
+        const pageRangeStr = document.getElementById('page-range').value;
+        computedPagesToPrint = parsePageRange(pageRangeStr, totalDetectedPages);
+
+        let baseRate = colorMode === 'color' ? 10.0 : 2.0;
+        finalCalculatedCost = Math.ceil(computedPagesToPrint * baseRate * copies);
+
+        document.getElementById('summary-pages').innerText = totalDetectedPages;
+        document.getElementById('summary-print-pages').innerText = computedPagesToPrint;
+        document.getElementById('summary-copies').innerText = copies;
+        document.getElementById('summary-total').innerText = `₹${finalCalculatedCost}`;
+    }
+
+    function goToStep4() {
+        calculatePrice();
+        setStep(4);
+    }
+
+    async function checkPrinterAndProceed() {
+        calculatePrice();
+        const online = await isPrinterOnline();
+        if (!online) {
+            alert("⚠️ Kiosk Printer is currently OFFLINE.\n\nPlease ensure the college printer PC is powered on and ready before making a payment.");
+            return;
+        }
+        processPayment();
+    }
+
+    function processPayment() {
+        if (finalCalculatedCost <= 0) {
+            sendToPrinter();
+            return;
+        }
+
+        var options = {
+            "key": "rzp_test_TURAyEBXgKmNLg", 
+            "amount": finalCalculatedCost * 100, 
+            "currency": "INR",
+            "name": "Campus Print",
+            "description": "Document Printing Fee",
+            "handler": function (response){ sendToPrinter(); },
+            "modal": { "ondismiss": function(){ console.log('Payment modal closed'); } },
+            "prefill": { "name": "Student", "email": "student@campus.edu", "contact": "9999999999" },
+            "theme": { "color": "#38bdf8" }
+        };
+        
+        try {
+            var rzp1 = new Razorpay(options);
+            rzp1.on('payment.failed', function (response){ alert("Payment Failed: " + response.error.description); });
+            rzp1.open();
+        } catch (err) {
+            sendToPrinter();
+        }
+    }
+
+    async function sendToPrinter() {
+        setStep(5);
+        document.getElementById('loading-spinner').style.display = "block";
+        document.getElementById('status-text').innerText = "Printing process active. Secure queue handling your job...";
+        
+        const files = document.getElementById('file-input').files;
+        const formData = new FormData();
+        
+        for (let i = 0; i < files.length; i++) {
+            formData.append('files', files[i]);
+        }
+
+        formData.append('copies', document.getElementById('copies').value);
+        formData.append('color_mode', document.getElementById('color-mode').value);
+        formData.append('paper_size', document.getElementById('paper-size').value);
+        formData.append('orientation', document.getElementById('orientation').value);
+        formData.append('duplex', document.getElementById('sides').value === 'double');
+        formData.append('page_range', document.getElementById('page-range').value);
+        formData.append('pages_per_sheet', document.getElementById('pages-per-sheet').value);
+
+        try {
+            const res = await fetch('/print-multiple', { method: 'POST', body: formData });
+            const data = await res.json();
+            document.getElementById('loading-spinner').style.display = "none";
+            if (res.ok) {
+                document.getElementById('status-text').innerText = "Payment successful & Print job queued!";
+            } else {
+                document.getElementById('status-text').innerText = "Printing error: " + (data.error || "Unknown error");
+            }
+        } catch (e) {
+            document.getElementById('loading-spinner').style.display = "none";
+            document.getElementById('status-text').innerText = "Network error while sending job.";
+        }
+    }
+
+    function resetKiosk() {
+        document.getElementById('file-input').value = "";
+        document.getElementById('page-range').value = "";
+        document.getElementById('copies').value = "1";
+        currentPdfDoc = null;
+        currentImageSrc = null;
+        document.getElementById('loading-spinner').style.display = "block";
+        setStep(1);
+    }
+</script>
+</body>
+</html>
