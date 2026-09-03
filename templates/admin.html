@@ -5,24 +5,55 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Campus Print Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .profile-avatar {
+            width: 40px;
+            height: 40px;
+            background: #4f46e5;
+            color: white;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .earnings-card {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .earnings-card:hover {
+            transform: translateY(-3px);
+        }
+    </style>
 </head>
 <body class="bg-light">
-    <nav class="navbar navbar-dark bg-dark shadow-sm">
-        <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1">🖨️ Campus Print Dashboard</span>
-            <a href="/admin/logout" class="btn btn-danger btn-sm">Logout</a>
+    <!-- Navbar with Instagram-style Profile Avatar -->
+    <nav class="navbar navbar-dark bg-dark shadow-sm px-4">
+        <span class="navbar-brand mb-0 h1">🖨️ Campus Print Dashboard</span>
+        
+        <div class="dropdown">
+            <div class="profile-avatar dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                {{ username[0].upper() }}
+            </div>
+            <ul class="dropdown-menu dropdown-menu-end shadow">
+                <li><h6 class="dropdown-header">Signed in as <b>{{ username }}</b></h6></li>
+                <li><span class="dropdown-item-text text-muted small">Role: {{ role }}</span></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-danger" href="/admin/logout">Logout</a></li>
+            </ul>
         </div>
     </nav>
 
     <div class="container my-4">
-        <!-- Instagram/Social Media Style Analytics Cards -->
+        <!-- Analytics Cards -->
         <div class="row mb-4">
             <div class="col-md-4">
-                <div class="card text-white bg-primary shadow-sm">
+                <div class="card text-white bg-primary shadow-sm earnings-card" onclick="openEarningsModal()" title="Click to view detailed breakdown & monthly filter">
                     <div class="card-body">
                         <h5 class="card-title">Total Earnings</h5>
                         <h3>₹ <span id="stat-earnings">{{ total_earnings }}</span></h3>
-                        <small>Lifetime Revenue Generated</small>
+                        <small>🔍 Click for Detailed Breakdown & Filter</small>
                     </div>
                 </div>
             </div>
@@ -45,6 +76,57 @@
                 </div>
             </div>
         </div>
+
+        <!-- Super Admin Management Panel (Only visible to Main Admin) -->
+        {% if is_super_admin %}
+        <div class="card shadow-sm mb-4 border-primary">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">👑 Super Admin: Sub-Admin Access Control</h5>
+            </div>
+            <div class="card-body">
+                <form action="/admin/add-admin" method="POST" class="row g-3 mb-3">
+                    <div class="col-md-5">
+                        <input type="text" class="form-control" name="new_username" placeholder="New Sub-Admin Username" required>
+                    </div>
+                    <div class="col-md-5">
+                        <input type="password" class="form-control" name="new_password" placeholder="Password" required>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-success w-100">Grant Access</button>
+                    </div>
+                </form>
+
+                {% if sub_admins %}
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Username</th>
+                                <th>Role</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sub_user, details in sub_admins.items() %}
+                            <tr>
+                                <td>{{ sub_user }}</td>
+                                <td><span class="badge bg-secondary">{{ details.role }}</span></td>
+                                <td>
+                                    <form action="/admin/delete-admin/{{ sub_user }}" method="POST" style="display:inline;">
+                                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Revoke access for {{ sub_user }}?')">Revoke Access</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">No sub-admins created yet.</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
 
         <!-- Pending Print Queue -->
         <div class="card shadow-sm mb-4">
@@ -89,7 +171,7 @@
 
         <!-- Completed History Section -->
         <div class="card shadow-sm">
-            <div class="card-header bg-white">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Print History & Analytics Logs</h5>
             </div>
             <div class="card-body">
@@ -127,8 +209,52 @@
         </div>
     </div>
 
+    <!-- Earnings Breakdown Modal -->
+    <div class="modal fade" id="earningsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">💰 Earnings Breakdown & Filter</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Filter by Month:</label>
+                            <input type="month" id="filter-month" class="form-control" onchange="fetchEarningsBreakdown()">
+                        </div>
+                        <div class="col-md-6 text-end d-flex align-items-end justify-content-end">
+                            <div>
+                                <span class="text-muted">Filtered Earnings:</span>
+                                <h4 class="text-primary mb-0">₹ <span id="modal-total-earnings">0</span></h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>File Name</th>
+                                    <th>Copies</th>
+                                    <th>Color</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modal-breakdown-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Auto refresh stats and page content every 3 seconds to look like a live social media dashboard
+        // Auto refresh stats and page content every 3 seconds
         setInterval(async () => {
             try {
                 let res = await fetch('/admin/stats');
@@ -138,7 +264,6 @@
                     document.getElementById('stat-prints').innerText = data.total_prints;
                     document.getElementById('stat-copies').innerText = data.total_copies;
                     
-                    // If pending count or history changes, reload the page to dynamically update the tables smoothly
                     if(data.pending_count !== document.querySelectorAll('#pending-table-body tr td a').length) {
                         window.location.reload();
                     }
@@ -147,6 +272,48 @@
                 console.log('Error syncing stats', e);
             }
         }, 3000);
+
+        function openEarningsModal() {
+            let modal = new bootstrap.Modal(document.getElementById('earningsModal'));
+            modal.show();
+            fetchEarningsBreakdown();
+        }
+
+        async function fetchEarningsBreakdown() {
+            let month = document.getElementById('filter-month').value;
+            try {
+                let url = '/admin/earnings-breakdown';
+                if(month) url += `?month=${month}`;
+                
+                let res = await fetch(url);
+                if(res.ok) {
+                    let data = await res.json();
+                    document.getElementById('modal-total-earnings').innerText = data.total_earnings;
+                    
+                    let tbody = document.getElementById('modal-breakdown-body');
+                    tbody.innerHTML = '';
+                    
+                    if(data.history.length > 0) {
+                        data.history.forEach(job => {
+                            tbody.innerHTML += `
+                                <tr>
+                                    <td>${job.timestamp}</td>
+                                    <td>${job.original_name}</td>
+                                    <td>${job.copies}</td>
+                                    <td>${job.color_mode.toUpperCase()}</td>
+                                    <td>₹${job.total_price}</td>
+                                </tr>
+                            `;
+                        });
+                    } else {
+                        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No records found for selected month.</td></tr>`;
+                    }
+                }
+            } catch(e) {
+                console.log('Error fetching earnings breakdown', e);
+            }
+        }
     </script>
 </body>
-</html>
+                                        </html>
+                
