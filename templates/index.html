@@ -32,11 +32,13 @@
     </div>
 
     <div class="kiosk-card">
-        <!-- Step 1: Home -->
+        <!-- Step 1: Home (Redesigned with Ultra-Attractive Features & Highlights) -->
         <div class="step-content active" id="step-1">
+            <div class="hero-top-badge">⚡ Instant College Kiosk Printing</div>
+            
             <div class="hero-image-container">
                 <svg class="hero-svg" viewBox="0 0 260 150" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <ellipse cx="130" cy="135" rx="70" ry="10" fill="#38bdf8" opacity="0.25" filter="blur(6px)"/>
+                    <ellipse cx="130" cy="135" rx="70" ry="10" fill="#38bdf8" opacity="0.3" filter="blur(6px)"/>
                     <rect x="45" y="55" width="170" height="75" rx="14" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5"/>
                     <path d="M75 55V32C75 26.4772 79.4772 22 85 22H175C180.523 22 185 26.4772 185 32V55" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4 4"/>
                     <rect x="100" y="28" width="60" height="35" rx="4" fill="#f8fafc" opacity="0.9"/>
@@ -52,19 +54,50 @@
                     <circle cx="65" cy="95" r="4" fill="#475569"/>
                 </svg>
             </div>
-            <h2 class="styled-heading">Welcome to Campus Print</h2>
-            <p class="info-text">Fast and secure printing for students. Upload, customize, and collect instantly.</p>
-            <button class="btn" onclick="setStep(2)" style="margin-top: 25px;">Next</button>
+
+            <h2 class="styled-heading" style="margin-bottom: 8px;">Welcome to Campus Print</h2>
+            <p class="info-text" style="margin-bottom: 24px;">Your hassle-free smart hub for fast document uploads, custom page layouts, and instant print collection.</p>
+
+            <!-- Feature Highlight Cards Grid -->
+            <div class="features-grid">
+                <div class="feature-mini-card">
+                    <span class="f-icon">🚀</span>
+                    <div>
+                        <h4>Lightning Fast</h4>
+                        <p>Direct queue integration</p>
+                    </div>
+                </div>
+                <div class="feature-mini-card">
+                    <span class="f-icon">🔒</span>
+                    <div>
+                        <h4>Secure & Safe</h4>
+                        <p>Encrypted file handling</p>
+                    </div>
+                </div>
+                <div class="feature-mini-card">
+                    <span class="f-icon">🎯</span>
+                    <div>
+                        <h4>Live Preview</h4>
+                        <p>See layouts before print</p>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn" onclick="setStep(2)" style="margin-top: 28px; width: 100%; padding: 14px; font-size: 1.05rem;">Get Started & Upload Document ➔</button>
         </div>
 
         <!-- Step 2: Upload -->
         <div class="step-content" id="step-2">
             <h2 class="styled-heading">📁 Upload Document</h2>
-            <p class="info-text">Supported formats: PDF, JPG, PNG, Word, PPT</p>
-            <div class="form-group" style="margin-top: 20px;">
-                <label>Select your files to print</label>
-                <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.ppt,.pptx">
+            <p class="info-text" style="margin-bottom: 22px;">Supported formats: PDF, JPG, PNG, Word, PPT</p>
+            
+            <div class="drop-zone" id="dropZone" onclick="document.getElementById('file-input').click()">
+                <div class="drop-zone-icon">☁️</div>
+                <div class="drop-zone-title" id="dropZoneTitle">Drag & Drop files here or <span style="color:#38bdf8; text-decoration:underline;">Browse</span></div>
+                <div class="drop-zone-desc" id="dropZoneDesc">Max file size: 50MB</div>
+                <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.ppt,.pptx" style="display: none;" onchange="handleFileSelect(this)">
             </div>
+
             <div class="btn-row" style="margin-top: 30px;">
                 <button class="btn secondary-btn" onclick="setStep(1)">Back</button>
                 <button class="btn" id="upload-next-btn" onclick="handleFileUploadAndNext()">Next</button>
@@ -107,17 +140,8 @@
             </div>
 
             <div class="form-group">
-                <label>Pages per Sheet</label>
-                <select id="pages-per-sheet" onchange="calculatePrice(); updateLivePreviewIfOpen();">
-                    <option value="1">1 Page per sheet</option>
-                    <option value="2">2 Pages per sheet</option>
-                    <option value="4">4 Pages per sheet</option>
-                </select>
-            </div>
-
-            <div class="form-group">
                 <label>Copies</label>
-                <input type="number" id="copies" value="1" min="1" max="100" oninput="if(this.value > 100) this.value = 100; if(this.value < 1) this.value = 1; calculatePrice();">
+                <input type="number" id="copies" value="1" min="1" max="100" oninput="calculatePrice();">
                 <small style="color: #ff4d4d; display: block; margin-top: 4px;">⚠️ Max limit: 100 copies allowed per print.</small>
             </div>
 
@@ -165,7 +189,24 @@
     </div>
 </div>
 
-<!-- Modal Container -->
+<!-- Custom Ultra-Attractive Modal Popup -->
+<div id="customAlertModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.85); z-index:99999; justify-content:center; align-items:center; backdrop-filter: blur(8px);">
+    <div style="background:linear-gradient(145deg, #1e293b, #0f172a); width:90%; max-width:440px; border-radius:20px; padding:30px 24px; border:1px solid rgba(56, 189, 248, 0.25); box-shadow: 0 20px 45px rgba(0,0,0,0.7); text-align:center; animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+        
+        <div style="display: inline-block; background: rgba(56, 189, 248, 0.1); color: #38bdf8; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 16px; border: 1px solid rgba(56, 189, 248, 0.3);">
+            Campus Print
+        </div>
+
+        <div id="customAlertIcon" style="font-size: 3rem; margin-bottom: 14px; filter: drop-shadow(0 4px 10px rgba(56, 189, 248, 0.3));">⚠️</div>
+        
+        <h3 id="customAlertTitle" style="margin: 0 0 10px 0; color: #f8fafc; font-size: 1.35rem; font-weight: 700;">Alert Title</h3>
+        <p id="customAlertMessage" style="color: #94a3b8; font-size: 0.95rem; line-height: 1.6; margin-bottom: 26px;">Detailed message goes here...</p>
+        
+        <button onclick="closeCustomAlert()" style="background: linear-gradient(135deg, #38bdf8, #0284c7); color: #0f172a; border: none; padding: 12px 24px; cursor: pointer; border-radius: 10px; font-weight: 700; font-size: 1rem; width: 100%; box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4); transition: all 0.2s;">Got It, Thanks</button>
+    </div>
+</div>
+
+<!-- Modal Container for Preview -->
 <div id="pdfModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.88); z-index:9999; justify-content:center; align-items:center; backdrop-filter: blur(5px);">
     <div style="background:#1e293b; width:95%; max-width:900px; height:88vh; border-radius:12px; display:flex; flex-direction:column; padding:18px; border:1px solid #334155; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
         
@@ -183,8 +224,91 @@
 </div>
 
 <style>
-.hero-image-container { display: flex; justify-content: center; margin-bottom: 18px; }
-.hero-svg { width: 175px; height: 105px; filter: drop-shadow(0 8px 16px rgba(56, 189, 248, 0.25)); }
+.hero-top-badge {
+    display: inline-block;
+    background: rgba(56, 189, 248, 0.1);
+    color: #38bdf8;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-bottom: 14px;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    letter-spacing: 0.3px;
+}
+
+.hero-image-container { display: flex; justify-content: center; margin-bottom: 14px; }
+.hero-svg { width: 160px; height: 95px; filter: drop-shadow(0 8px 16px rgba(56, 189, 248, 0.25)); }
+
+/* Feature Cards Styling */
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 18px;
+    text-align: left;
+}
+.feature-mini-card {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(56, 189, 248, 0.15);
+    padding: 10px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.2s ease;
+}
+.feature-mini-card:hover {
+    border-color: rgba(56, 189, 248, 0.4);
+    background: rgba(56, 189, 248, 0.05);
+    transform: translateY(-2px);
+}
+.feature-mini-card .f-icon {
+    font-size: 1.3rem;
+}
+.feature-mini-card h4 {
+    color: #f8fafc;
+    font-size: 0.8rem;
+    margin: 0 0 2px 0;
+    font-weight: 600;
+}
+.feature-mini-card p {
+    color: #94a3b8;
+    font-size: 0.7rem;
+    margin: 0;
+}
+
+/* Modern Drag & Drop Box */
+.drop-zone {
+    border: 2px dashed rgba(56, 189, 248, 0.4);
+    background: rgba(15, 23, 42, 0.6);
+    padding: 32px 20px;
+    border-radius: 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.drop-zone:hover {
+    border-color: #38bdf8;
+    background: rgba(56, 189, 248, 0.05);
+    box-shadow: 0 8px 25px rgba(56, 189, 248, 0.15);
+    transform: translateY(-2px);
+}
+.drop-zone-icon {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+.drop-zone-title {
+    color: #f8fafc;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+.drop-zone-desc {
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
 #pdfCanvasContainer canvas, #pdfCanvasContainer img {
     background: #ffffff;
     border-radius: 4px;
@@ -192,6 +316,17 @@
     max-width: 100%;
 }
 .bw-filter { filter: grayscale(100%) contrast(120%) !important; }
+
+@keyframes scaleIn {
+    from { transform: scale(0.85); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+@media (max-width: 600px) {
+    .features-grid {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
 
 <script>
@@ -200,6 +335,31 @@
     let finalCalculatedCost = 0;
     let currentPdfDoc = null;
     let currentImageSrc = null;
+
+    function showCustomAlert(title, message, icon = '⚠️') {
+        document.getElementById('customAlertTitle').innerText = title;
+        document.getElementById('customAlertMessage').innerText = message;
+        document.getElementById('customAlertIcon').innerText = icon;
+        document.getElementById('customAlertModal').style.display = 'flex';
+    }
+
+    function closeCustomAlert() {
+        document.getElementById('customAlertModal').style.display = 'none';
+    }
+
+    function handleFileSelect(input) {
+        if (input.files && input.files.length > 0) {
+            const titleEl = document.getElementById('dropZoneTitle');
+            const descEl = document.getElementById('dropZoneDesc');
+            if (input.files.length === 1) {
+                titleEl.innerHTML = `📄 <span style="color:#38bdf8; font-weight:600;">${input.files[0].name}</span>`;
+                descEl.innerText = `${(input.files[0].size / (1024*1024)).toFixed(2)} MB • Ready to upload`;
+            } else {
+                titleEl.innerHTML = `📂 <span style="color:#38bdf8; font-weight:600;">${input.files.length} files selected</span>`;
+                descEl.innerText = "Click or drop more to change selection";
+            }
+        }
+    }
 
     function setStep(step) {
         document.querySelectorAll('.step-content').forEach(s => s.classList.remove('active'));
@@ -241,7 +401,6 @@
 
         const colorMode = document.getElementById('color-mode').value;
         const orientation = document.getElementById('orientation').value;
-        const pps = parseInt(document.getElementById('pages-per-sheet').value) || 1;
 
         if (currentImageSrc) {
             document.getElementById('modalSubTitle').innerText = `Color: ${colorMode.toUpperCase()} | Orientation: ${orientation.toUpperCase()}`;
@@ -262,88 +421,26 @@
         const allowedPages = Array.from(getParsedPageSet(pageRangeStr, currentPdfDoc.numPages));
 
         document.getElementById('modalSubTitle').innerText = 
-            `Color: ${colorMode.toUpperCase()} | Orientation: ${orientation.toUpperCase()} | Grid: ${pps} per sheet`;
+            `Color: ${colorMode.toUpperCase()} | Orientation: ${orientation.toUpperCase()}`;
 
-        const pageGroups = [];
-        for (let i = 0; i < allowedPages.length; i += pps) {
-            pageGroups.push(allowedPages.slice(i, i + pps));
-        }
-
-        for (let groupIndex = 0; groupIndex < pageGroups.length; groupIndex++) {
-            const pageNums = pageGroups[groupIndex];
+        for (let i = 0; i < allowedPages.length; i++) {
+            const pageNum = allowedPages[i];
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
 
             if (colorMode === 'bw') canvas.classList.add('bw-filter');
 
-            if (pps === 1) {
-                const page = await currentPdfDoc.getPage(pageNums[0]);
-                let scale = 1.0;
-                let viewport = page.getViewport({ scale: scale });
+            const page = await currentPdfDoc.getPage(pageNum);
+            let scale = 1.0;
+            let viewport = page.getViewport({ scale: scale });
 
-                if (orientation === 'landscape' && viewport.width < viewport.height) {
-                    viewport = page.getViewport({ scale: scale, rotation: 90 });
-                }
-
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
-                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-            } 
-            else if (pps === 2) {
-                const page1 = await currentPdfDoc.getPage(pageNums[0]);
-                const vp1 = page1.getViewport({ scale: 0.6 });
-                const page2 = pageNums[1] ? await currentPdfDoc.getPage(pageNums[1]) : null;
-                const vp2 = page2 ? page2.getViewport({ scale: 0.6 }) : null;
-
-                const sheetWidth = vp1.width * 2 + 30;
-                const sheetHeight = vp1.height + 20;
-
-                canvas.width = sheetWidth;
-                canvas.height = sheetHeight;
-
-                ctx.fillStyle = "#ffffff";
-                ctx.fillRect(0, 0, sheetWidth, sheetHeight);
-
-                const c1 = document.createElement('canvas');
-                c1.width = vp1.width; c1.height = vp1.height;
-                await page1.render({ canvasContext: c1.getContext('2d'), viewport: vp1 }).promise;
-                ctx.drawImage(c1, 10, 10);
-
-                if (page2) {
-                    const c2 = document.createElement('canvas');
-                    c2.width = vp2.width; c2.height = vp2.height;
-                    await page2.render({ canvasContext: c2.getContext('2d'), viewport: vp2 }).promise;
-                    ctx.drawImage(c2, vp1.width + 20, 10);
-                }
-            } 
-            else if (pps === 4) {
-                const page1 = await currentPdfDoc.getPage(pageNums[0]);
-                const vp = page1.getViewport({ scale: 0.45 });
-
-                const sheetWidth = vp.width * 2 + 30;
-                const sheetHeight = vp.height * 2 + 30;
-
-                canvas.width = sheetWidth;
-                canvas.height = sheetHeight;
-
-                ctx.fillStyle = "#ffffff";
-                ctx.fillRect(0, 0, sheetWidth, sheetHeight);
-
-                const offsets = [
-                    { x: 10, y: 10 },
-                    { x: vp.width + 20, y: 10 },
-                    { x: 10, y: vp.height + 20 },
-                    { x: vp.width + 20, y: vp.height + 20 }
-                ];
-
-                for (let idx = 0; idx < pageNums.length; idx++) {
-                    const p = await currentPdfDoc.getPage(pageNums[idx]);
-                    const c = document.createElement('canvas');
-                    c.width = vp.width; c.height = vp.height;
-                    await p.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
-                    ctx.drawImage(c, offsets[idx].x, offsets[idx].y);
-                }
+            if (orientation === 'landscape' && viewport.width < viewport.height) {
+                viewport = page.getViewport({ scale: scale, rotation: 90 });
             }
+
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
 
             container.appendChild(canvas);
         }
@@ -359,14 +456,14 @@
     function triggerDocumentPreview() {
         const files = document.getElementById('file-input').files;
         if (files.length === 0) {
-            alert('No file selected.');
+            showCustomAlert("No File Found", "Please select a document file before trying to preview layout.", "🔍");
             return;
         }
         const file = files[0];
         const ext = file.name.split('.').pop().toLowerCase();
 
         if (['doc', 'docx', 'ppt', 'pptx'].includes(ext)) {
-            alert("Visual preview is available for PDF and Image files. Your document will be printed directly with all applied print settings.");
+            showCustomAlert("Direct Print Notice", "Visual preview is available for PDF and Image files. Word/PPT documents will be printed directly with your settings.", "ℹ️");
             return;
         }
 
@@ -418,7 +515,7 @@
     async function handleFileUploadAndNext() {
         const files = document.getElementById('file-input').files;
         if (files.length === 0) {
-            alert('Please select at least one file before proceeding.');
+            showCustomAlert("Upload Required", "Please select at least one file before proceeding.", "📂");
             return;
         }
 
@@ -439,10 +536,10 @@
                 calculatePrice();
                 setStep(3);
             } else {
-                alert(data.error || 'Failed to analyze files.');
+                showCustomAlert("Analysis Failed", data.error || 'Failed to analyze files.', "❌");
             }
         } catch (e) {
-            alert('Error connecting to backend server.');
+            showCustomAlert("Connection Error", "Error connecting to backend server.", "⚡");
         } finally {
             btn.disabled = false;
             btn.innerText = 'Next';
@@ -483,7 +580,7 @@
         calculatePrice();
         const online = await isPrinterOnline();
         if (!online) {
-            alert("⚠️ Kiosk Printer is currently OFFLINE.\n\nPlease ensure the college printer PC is powered on and ready before making a payment.");
+            showCustomAlert("Printer Offline", "Kiosk Printer is currently offline. Please ensure the college printer PC is powered on and ready before making a payment.", "🖨️");
             return;
         }
         processPayment();
@@ -509,7 +606,7 @@
         
         try {
             var rzp1 = new Razorpay(options);
-            rzp1.on('payment.failed', function (response){ alert("Payment Failed: " + response.error.description); });
+            rzp1.on('payment.failed', function (response){ showCustomAlert("Payment Failed", response.error.description, "❌"); });
             rzp1.open();
         } catch (err) {
             sendToPrinter();
@@ -534,7 +631,7 @@
         formData.append('orientation', document.getElementById('orientation').value);
         formData.append('duplex', document.getElementById('sides').value === 'double');
         formData.append('page_range', document.getElementById('page-range').value);
-        formData.append('pages_per_sheet', document.getElementById('pages-per-sheet').value);
+        formData.append('pages_per_sheet', '1');
 
         try {
             const res = await fetch('/print-multiple', { method: 'POST', body: formData });
@@ -555,6 +652,8 @@
         document.getElementById('file-input').value = "";
         document.getElementById('page-range').value = "";
         document.getElementById('copies').value = "1";
+        document.getElementById('dropZoneTitle').innerHTML = `Drag & Drop files here or <span style="color:#38bdf8; text-decoration:underline;">Browse</span>`;
+        document.getElementById('dropZoneDesc').innerText = "Max file size: 50MB";
         currentPdfDoc = null;
         currentImageSrc = null;
         document.getElementById('loading-spinner').style.display = "block";
