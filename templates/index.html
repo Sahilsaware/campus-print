@@ -32,11 +32,13 @@
     </div>
 
     <div class="kiosk-card">
-        <!-- Step 1: Home -->
+        <!-- Step 1: Home (Redesigned with Ultra-Attractive Features & Highlights) -->
         <div class="step-content active" id="step-1">
+            <div class="hero-top-badge">⚡ Instant College Kiosk Printing</div>
+            
             <div class="hero-image-container">
                 <svg class="hero-svg" viewBox="0 0 260 150" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <ellipse cx="130" cy="135" rx="70" ry="10" fill="#38bdf8" opacity="0.25" filter="blur(6px)"/>
+                    <ellipse cx="130" cy="135" rx="70" ry="10" fill="#38bdf8" opacity="0.3" filter="blur(6px)"/>
                     <rect x="45" y="55" width="170" height="75" rx="14" fill="#0f172a" stroke="#38bdf8" stroke-width="2.5"/>
                     <path d="M75 55V32C75 26.4772 79.4772 22 85 22H175C180.523 22 185 26.4772 185 32V55" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4 4"/>
                     <rect x="100" y="28" width="60" height="35" rx="4" fill="#f8fafc" opacity="0.9"/>
@@ -52,9 +54,36 @@
                     <circle cx="65" cy="95" r="4" fill="#475569"/>
                 </svg>
             </div>
-            <h2 class="styled-heading">Welcome to Campus Print</h2>
-            <p class="info-text">Fast and secure printing for students. Upload, customize, and collect instantly.</p>
-            <button class="btn" onclick="setStep(2)" style="margin-top: 25px;">Next</button>
+
+            <h2 class="styled-heading" style="margin-bottom: 8px;">Welcome to Campus Print</h2>
+            <p class="info-text" style="margin-bottom: 24px;">Your hassle-free smart hub for fast document uploads, custom page layouts, and instant print collection.</p>
+
+            <!-- Feature Highlight Cards Grid -->
+            <div class="features-grid">
+                <div class="feature-mini-card">
+                    <span class="f-icon">🚀</span>
+                    <div>
+                        <h4>Lightning Fast</h4>
+                        <p>Direct queue integration</p>
+                    </div>
+                </div>
+                <div class="feature-mini-card">
+                    <span class="f-icon">🔒</span>
+                    <div>
+                        <h4>Secure & Safe</h4>
+                        <p>Encrypted file handling</p>
+                    </div>
+                </div>
+                <div class="feature-mini-card">
+                    <span class="f-icon">🎯</span>
+                    <div>
+                        <h4>Live Preview</h4>
+                        <p>See layouts before print</p>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn" onclick="setStep(2)" style="margin-top: 28px; width: 100%; padding: 14px; font-size: 1.05rem;">Get Started & Upload Document ➔</button>
         </div>
 
         <!-- Step 2: Upload -->
@@ -62,7 +91,6 @@
             <h2 class="styled-heading">📁 Upload Document</h2>
             <p class="info-text" style="margin-bottom: 22px;">Supported formats: PDF, JPG, PNG, Word, PPT</p>
             
-            <!-- Modern Drag & Drop File Zone -->
             <div class="drop-zone" id="dropZone" onclick="document.getElementById('file-input').click()">
                 <div class="drop-zone-icon">☁️</div>
                 <div class="drop-zone-title" id="dropZoneTitle">Drag & Drop files here or <span style="color:#38bdf8; text-decoration:underline;">Browse</span></div>
@@ -161,23 +189,19 @@
     </div>
 </div>
 
-<!-- Custom Styled Ultra-Attractive Modal Popup -->
+<!-- Custom Ultra-Attractive Modal Popup -->
 <div id="customAlertModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.85); z-index:99999; justify-content:center; align-items:center; backdrop-filter: blur(8px);">
     <div style="background:linear-gradient(145deg, #1e293b, #0f172a); width:90%; max-width:440px; border-radius:20px; padding:30px 24px; border:1px solid rgba(56, 189, 248, 0.25); box-shadow: 0 20px 45px rgba(0,0,0,0.7); text-align:center; animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
         
-        <!-- App Branding Tag -->
         <div style="display: inline-block; background: rgba(56, 189, 248, 0.1); color: #38bdf8; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 16px; border: 1px solid rgba(56, 189, 248, 0.3);">
             Campus Print
         </div>
 
-        <!-- Dynamic Icon Container -->
         <div id="customAlertIcon" style="font-size: 3rem; margin-bottom: 14px; filter: drop-shadow(0 4px 10px rgba(56, 189, 248, 0.3));">⚠️</div>
         
-        <!-- Title & Message -->
         <h3 id="customAlertTitle" style="margin: 0 0 10px 0; color: #f8fafc; font-size: 1.35rem; font-weight: 700;">Alert Title</h3>
         <p id="customAlertMessage" style="color: #94a3b8; font-size: 0.95rem; line-height: 1.6; margin-bottom: 26px;">Detailed message goes here...</p>
         
-        <!-- Action Button -->
         <button onclick="closeCustomAlert()" style="background: linear-gradient(135deg, #38bdf8, #0284c7); color: #0f172a; border: none; padding: 12px 24px; cursor: pointer; border-radius: 10px; font-weight: 700; font-size: 1rem; width: 100%; box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4); transition: all 0.2s;">Got It, Thanks</button>
     </div>
 </div>
@@ -200,10 +224,61 @@
 </div>
 
 <style>
-.hero-image-container { display: flex; justify-content: center; margin-bottom: 18px; }
-.hero-svg { width: 175px; height: 105px; filter: drop-shadow(0 8px 16px rgba(56, 189, 248, 0.25)); }
+.hero-top-badge {
+    display: inline-block;
+    background: rgba(56, 189, 248, 0.1);
+    color: #38bdf8;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-bottom: 14px;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    letter-spacing: 0.3px;
+}
 
-/* Stunning Modern Drag & Drop Box */
+.hero-image-container { display: flex; justify-content: center; margin-bottom: 14px; }
+.hero-svg { width: 160px; height: 95px; filter: drop-shadow(0 8px 16px rgba(56, 189, 248, 0.25)); }
+
+/* Feature Cards Styling */
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 18px;
+    text-align: left;
+}
+.feature-mini-card {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(56, 189, 248, 0.15);
+    padding: 10px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.2s ease;
+}
+.feature-mini-card:hover {
+    border-color: rgba(56, 189, 248, 0.4);
+    background: rgba(56, 189, 248, 0.05);
+    transform: translateY(-2px);
+}
+.feature-mini-card .f-icon {
+    font-size: 1.3rem;
+}
+.feature-mini-card h4 {
+    color: #f8fafc;
+    font-size: 0.8rem;
+    margin: 0 0 2px 0;
+    font-weight: 600;
+}
+.feature-mini-card p {
+    color: #94a3b8;
+    font-size: 0.7rem;
+    margin: 0;
+}
+
+/* Modern Drag & Drop Box */
 .drop-zone {
     border: 2px dashed rgba(56, 189, 248, 0.4);
     background: rgba(15, 23, 42, 0.6);
@@ -246,6 +321,12 @@
     from { transform: scale(0.85); opacity: 0; }
     to { transform: scale(1); opacity: 1; }
 }
+
+@media (max-width: 600px) {
+    .features-grid {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
 
 <script>
@@ -255,7 +336,6 @@
     let currentPdfDoc = null;
     let currentImageSrc = null;
 
-    // Custom Ultra-Attractive Popup function
     function showCustomAlert(title, message, icon = '⚠️') {
         document.getElementById('customAlertTitle').innerText = title;
         document.getElementById('customAlertMessage').innerText = message;
