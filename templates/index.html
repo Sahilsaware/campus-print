@@ -106,18 +106,15 @@
                 </select>
             </div>
 
-            <div class="form-group">
-                <label>Pages per Sheet</label>
-                <select id="pages-per-sheet" onchange="calculatePrice(); updateLivePreviewIfOpen();">
-                    <option value="1">1 Page per sheet</option>
-                    <option value="2">2 Pages per sheet</option>
-                    <option value="4">4 Pages per sheet</option>
-                </select>
-            </div>
+            <!-- Pages per Sheet block removed completely -->
 
             <div class="form-group">
                 <label>Copies</label>
-                <input type="number" id="copies" value="1" min="1" max="100" oninput="if(this.value > 100) this.value = 100; if(this.value < 1) this.value = 1; calculatePrice();">
+                <div class="copies-control-wrapper" style="display: flex; align-items: center; gap: 10px;">
+                    <button type="button" class="btn secondary-btn" style="padding: 6px 14px; font-weight: bold;" onclick="adjustCopies(-1)">-</button>
+                    <input type="number" id="copies" value="1" min="1" max="100" style="text-align: center;" oninput="calculatePrice();">
+                    <button type="button" class="btn secondary-btn" style="padding: 6px 14px; font-weight: bold;" onclick="adjustCopies(1)">+</button>
+                </div>
                 <small style="color: #ff4d4d; display: block; margin-top: 4px;">⚠️ Max limit: 100 copies allowed per print.</small>
             </div>
 
@@ -235,13 +232,23 @@
         return pages.size > 0 ? pages : new Set([...Array(maxPages).keys()].map(i => i + 1));
     }
 
+    // Helper function for incrementing/decrementing copies smoothly
+    function adjustCopies(amount) {
+        const copiesInput = document.getElementById('copies');
+        let currentVal = parseInt(copiesInput.value) || 1;
+        currentVal += amount;
+        if (currentVal > 100) currentVal = 100;
+        if (currentVal < 1) currentVal = 1;
+        copiesInput.value = currentVal;
+        calculatePrice();
+    }
+
     async function renderPagesWithSettings() {
         const container = document.getElementById('pdfCanvasContainer');
         container.innerHTML = '';
 
         const colorMode = document.getElementById('color-mode').value;
         const orientation = document.getElementById('orientation').value;
-        const pps = parseInt(document.getElementById('pages-per-sheet').value) || 1;
 
         if (currentImageSrc) {
             document.getElementById('modalSubTitle').innerText = `Color: ${colorMode.toUpperCase()} | Orientation: ${orientation.toUpperCase()}`;
@@ -262,88 +269,26 @@
         const allowedPages = Array.from(getParsedPageSet(pageRangeStr, currentPdfDoc.numPages));
 
         document.getElementById('modalSubTitle').innerText = 
-            `Color: ${colorMode.toUpperCase()} | Orientation: ${orientation.toUpperCase()} | Grid: ${pps} per sheet`;
+            `Color: ${colorMode.toUpperCase()} | Orientation: ${orientation.toUpperCase()}`;
 
-        const pageGroups = [];
-        for (let i = 0; i < allowedPages.length; i += pps) {
-            pageGroups.push(allowedPages.slice(i, i + pps));
-        }
-
-        for (let groupIndex = 0; groupIndex < pageGroups.length; groupIndex++) {
-            const pageNums = pageGroups[groupIndex];
+        for (let i = 0; i < allowedPages.length; i++) {
+            const pageNum = allowedPages[i];
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
 
             if (colorMode === 'bw') canvas.classList.add('bw-filter');
 
-            if (pps === 1) {
-                const page = await currentPdfDoc.getPage(pageNums[0]);
-                let scale = 1.0;
-                let viewport = page.getViewport({ scale: scale });
+            const page = await currentPdfDoc.getPage(pageNum);
+            let scale = 1.0;
+            let viewport = page.getViewport({ scale: scale });
 
-                if (orientation === 'landscape' && viewport.width < viewport.height) {
-                    viewport = page.getViewport({ scale: scale, rotation: 90 });
-                }
-
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
-                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-            } 
-            else if (pps === 2) {
-                const page1 = await currentPdfDoc.getPage(pageNums[0]);
-                const vp1 = page1.getViewport({ scale: 0.6 });
-                const page2 = pageNums[1] ? await currentPdfDoc.getPage(pageNums[1]) : null;
-                const vp2 = page2 ? page2.getViewport({ scale: 0.6 }) : null;
-
-                const sheetWidth = vp1.width * 2 + 30;
-                const sheetHeight = vp1.height + 20;
-
-                canvas.width = sheetWidth;
-                canvas.height = sheetHeight;
-
-                ctx.fillStyle = "#ffffff";
-                ctx.fillRect(0, 0, sheetWidth, sheetHeight);
-
-                const c1 = document.createElement('canvas');
-                c1.width = vp1.width; c1.height = vp1.height;
-                await page1.render({ canvasContext: c1.getContext('2d'), viewport: vp1 }).promise;
-                ctx.drawImage(c1, 10, 10);
-
-                if (page2) {
-                    const c2 = document.createElement('canvas');
-                    c2.width = vp2.width; c2.height = vp2.height;
-                    await page2.render({ canvasContext: c2.getContext('2d'), viewport: vp2 }).promise;
-                    ctx.drawImage(c2, vp1.width + 20, 10);
-                }
-            } 
-            else if (pps === 4) {
-                const page1 = await currentPdfDoc.getPage(pageNums[0]);
-                const vp = page1.getViewport({ scale: 0.45 });
-
-                const sheetWidth = vp.width * 2 + 30;
-                const sheetHeight = vp.height * 2 + 30;
-
-                canvas.width = sheetWidth;
-                canvas.height = sheetHeight;
-
-                ctx.fillStyle = "#ffffff";
-                ctx.fillRect(0, 0, sheetWidth, sheetHeight);
-
-                const offsets = [
-                    { x: 10, y: 10 },
-                    { x: vp.width + 20, y: 10 },
-                    { x: 10, y: vp.height + 20 },
-                    { x: vp.width + 20, y: vp.height + 20 }
-                ];
-
-                for (let idx = 0; idx < pageNums.length; idx++) {
-                    const p = await currentPdfDoc.getPage(pageNums[idx]);
-                    const c = document.createElement('canvas');
-                    c.width = vp.width; c.height = vp.height;
-                    await p.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
-                    ctx.drawImage(c, offsets[idx].x, offsets[idx].y);
-                }
+            if (orientation === 'landscape' && viewport.width < viewport.height) {
+                viewport = page.getViewport({ scale: scale, rotation: 90 });
             }
+
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
 
             container.appendChild(canvas);
         }
@@ -534,7 +479,7 @@
         formData.append('orientation', document.getElementById('orientation').value);
         formData.append('duplex', document.getElementById('sides').value === 'double');
         formData.append('page_range', document.getElementById('page-range').value);
-        formData.append('pages_per_sheet', document.getElementById('pages-per-sheet').value);
+        formData.append('pages_per_sheet', '1'); // Default fallback since block is removed
 
         try {
             const res = await fetch('/print-multiple', { method: 'POST', body: formData });
