@@ -156,7 +156,20 @@
     </div>
 </div>
 
-<!-- Modal Container -->
+<!-- Custom Styled Modal Popup -->
+<div id="customAlertModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.82); z-index:99999; justify-content:center; align-items:center; backdrop-filter: blur(6px);">
+    <div style="background:linear-gradient(135deg, #1e293b, #0f172a); width:90%; max-width:420px; border-radius:16px; padding:24px; border:1px solid #334155; box-shadow: 0 15px 35px rgba(0,0,0,0.6); text-align:center; animation: scaleIn 0.25s ease;">
+        
+        <div style="font-size: 2.8rem; margin-bottom: 12px;">⚠️</div>
+        
+        <h3 id="customAlertTitle" style="margin: 0 0 8px 0; color: #f8fafc; font-size: 1.25rem; font-weight: 700;">Campus Print Alert</h3>
+        <p id="customAlertMessage" style="color: #94a3b8; font-size: 0.95rem; line-height: 1.5; margin-bottom: 22px;">Message goes here...</p>
+        
+        <button onclick="closeCustomAlert()" style="background: #38bdf8; color: #0f172a; border: none; padding: 10px 24px; cursor: pointer; border-radius: 8px; font-weight: 700; font-size: 0.95rem; width: 100%; transition: background 0.2s;">Got It</button>
+    </div>
+</div>
+
+<!-- Modal Container for Preview -->
 <div id="pdfModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.88); z-index:9999; justify-content:center; align-items:center; backdrop-filter: blur(5px);">
     <div style="background:#1e293b; width:95%; max-width:900px; height:88vh; border-radius:12px; display:flex; flex-direction:column; padding:18px; border:1px solid #334155; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
         
@@ -183,6 +196,10 @@
     max-width: 100%;
 }
 .bw-filter { filter: grayscale(100%) contrast(120%) !important; }
+@keyframes scaleIn {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
 </style>
 
 <script>
@@ -191,6 +208,17 @@
     let finalCalculatedCost = 0;
     let currentPdfDoc = null;
     let currentImageSrc = null;
+
+    // Custom Popup function replacing default browser alert
+    function showCustomAlert(title, message) {
+        document.getElementById('customAlertTitle').innerText = title;
+        document.getElementById('customAlertMessage').innerText = message;
+        document.getElementById('customAlertModal').style.display = 'flex';
+    }
+
+    function closeCustomAlert() {
+        document.getElementById('customAlertModal').style.display = 'none';
+    }
 
     function setStep(step) {
         document.querySelectorAll('.step-content').forEach(s => s.classList.remove('active'));
@@ -287,14 +315,14 @@
     function triggerDocumentPreview() {
         const files = document.getElementById('file-input').files;
         if (files.length === 0) {
-            alert('No file selected.');
+            showCustomAlert("No File Found", "Please select a document file before trying to preview layout.");
             return;
         }
         const file = files[0];
         const ext = file.name.split('.').pop().toLowerCase();
 
         if (['doc', 'docx', 'ppt', 'pptx'].includes(ext)) {
-            alert("Visual preview is available for PDF and Image files. Your document will be printed directly with all applied print settings.");
+            showCustomAlert("Direct Print Notice", "Visual preview is available for PDF and Image files. Word/PPT documents will be printed directly with your settings.");
             return;
         }
 
@@ -346,7 +374,7 @@
     async function handleFileUploadAndNext() {
         const files = document.getElementById('file-input').files;
         if (files.length === 0) {
-            alert('Please select at least one file before proceeding.');
+            showCustomAlert("Upload Required", "Please select at least one file before proceeding.");
             return;
         }
 
@@ -367,10 +395,10 @@
                 calculatePrice();
                 setStep(3);
             } else {
-                alert(data.error || 'Failed to analyze files.');
+                showCustomAlert("Analysis Failed", data.error || 'Failed to analyze files.');
             }
         } catch (e) {
-            alert('Error connecting to backend server.');
+            showCustomAlert("Connection Error", "Error connecting to backend server.");
         } finally {
             btn.disabled = false;
             btn.innerText = 'Next';
@@ -411,7 +439,7 @@
         calculatePrice();
         const online = await isPrinterOnline();
         if (!online) {
-            alert("⚠️ Kiosk Printer is currently OFFLINE.\n\nPlease ensure the college printer PC is powered on and ready before making a payment.");
+            showCustomAlert("Printer Offline Notice", "Kiosk Printer is currently offline. Please ensure the college printer PC is powered on and ready before making a payment.");
             return;
         }
         processPayment();
@@ -437,7 +465,7 @@
         
         try {
             var rzp1 = new Razorpay(options);
-            rzp1.on('payment.failed', function (response){ alert("Payment Failed: " + response.error.description); });
+            rzp1.on('payment.failed', function (response){ showCustomAlert("Payment Failed", response.error.description); });
             rzp1.open();
         } catch (err) {
             sendToPrinter();
