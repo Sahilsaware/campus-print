@@ -32,10 +32,8 @@
     </div>
 
     <div class="kiosk-card">
-        <!-- Step 1: Home (Redesigned with Ultra-Attractive Features & Highlights) -->
+        <!-- Step 1: Home (Clean & Minimalist Redesign) -->
         <div class="step-content active" id="step-1">
-            <div class="hero-top-badge">⚡ Instant College Kiosk Printing</div>
-            
             <div class="hero-image-container">
                 <svg class="hero-svg" viewBox="0 0 260 150" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <ellipse cx="130" cy="135" rx="70" ry="10" fill="#38bdf8" opacity="0.3" filter="blur(6px)"/>
@@ -56,34 +54,9 @@
             </div>
 
             <h2 class="styled-heading" style="margin-bottom: 8px;">Welcome to Campus Print</h2>
-            <p class="info-text" style="margin-bottom: 24px;">Your hassle-free smart hub for fast document uploads, custom page layouts, and instant print collection.</p>
+            <p class="info-text" style="margin-bottom: 36px;">Fast, secure, and easy document printing for students.</p>
 
-            <!-- Feature Highlight Cards Grid -->
-            <div class="features-grid">
-                <div class="feature-mini-card">
-                    <span class="f-icon">🚀</span>
-                    <div>
-                        <h4>Lightning Fast</h4>
-                        <p>Direct queue integration</p>
-                    </div>
-                </div>
-                <div class="feature-mini-card">
-                    <span class="f-icon">🔒</span>
-                    <div>
-                        <h4>Secure & Safe</h4>
-                        <p>Encrypted file handling</p>
-                    </div>
-                </div>
-                <div class="feature-mini-card">
-                    <span class="f-icon">🎯</span>
-                    <div>
-                        <h4>Live Preview</h4>
-                        <p>See layouts before print</p>
-                    </div>
-                </div>
-            </div>
-
-            <button class="btn" onclick="setStep(2)" style="margin-top: 28px; width: 100%; padding: 14px; font-size: 1.05rem;">Get Started & Upload Document ➔</button>
+            <button class="btn" onclick="setStep(2)" style="width: 100%; padding: 14px; font-size: 1.05rem;">Get Started & Upload ➔</button>
         </div>
 
         <!-- Step 2: Upload -->
@@ -224,59 +197,8 @@
 </div>
 
 <style>
-.hero-top-badge {
-    display: inline-block;
-    background: rgba(56, 189, 248, 0.1);
-    color: #38bdf8;
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 700;
-    margin-bottom: 14px;
-    border: 1px solid rgba(56, 189, 248, 0.25);
-    letter-spacing: 0.3px;
-}
-
-.hero-image-container { display: flex; justify-content: center; margin-bottom: 14px; }
-.hero-svg { width: 160px; height: 95px; filter: drop-shadow(0 8px 16px rgba(56, 189, 248, 0.25)); }
-
-/* Feature Cards Styling */
-.features-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    margin-top: 18px;
-    text-align: left;
-}
-.feature-mini-card {
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(56, 189, 248, 0.15);
-    padding: 10px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    transition: all 0.2s ease;
-}
-.feature-mini-card:hover {
-    border-color: rgba(56, 189, 248, 0.4);
-    background: rgba(56, 189, 248, 0.05);
-    transform: translateY(-2px);
-}
-.feature-mini-card .f-icon {
-    font-size: 1.3rem;
-}
-.feature-mini-card h4 {
-    color: #f8fafc;
-    font-size: 0.8rem;
-    margin: 0 0 2px 0;
-    font-weight: 600;
-}
-.feature-mini-card p {
-    color: #94a3b8;
-    font-size: 0.7rem;
-    margin: 0;
-}
+.hero-image-container { display: flex; justify-content: center; margin-bottom: 18px; }
+.hero-svg { width: 150px; height: 90px; filter: drop-shadow(0 8px 16px rgba(56, 189, 248, 0.25)); }
 
 /* Modern Drag & Drop Box */
 .drop-zone {
@@ -320,12 +242,6 @@
 @keyframes scaleIn {
     from { transform: scale(0.85); opacity: 0; }
     to { transform: scale(1); opacity: 1; }
-}
-
-@media (max-width: 600px) {
-    .features-grid {
-        grid-template-columns: 1fr;
-    }
 }
 </style>
 
