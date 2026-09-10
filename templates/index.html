@@ -106,15 +106,9 @@
                 </select>
             </div>
 
-            <!-- Pages per Sheet block removed completely -->
-
             <div class="form-group">
                 <label>Copies</label>
-                <div class="copies-control-wrapper" style="display: flex; align-items: center; gap: 10px;">
-                    <button type="button" class="btn secondary-btn" style="padding: 6px 14px; font-weight: bold;" onclick="adjustCopies(-1)">-</button>
-                    <input type="number" id="copies" value="1" min="1" max="100" style="text-align: center;" oninput="calculatePrice();">
-                    <button type="button" class="btn secondary-btn" style="padding: 6px 14px; font-weight: bold;" onclick="adjustCopies(1)">+</button>
-                </div>
+                <input type="number" id="copies" value="1" min="1" max="100" oninput="calculatePrice();">
                 <small style="color: #ff4d4d; display: block; margin-top: 4px;">⚠️ Max limit: 100 copies allowed per print.</small>
             </div>
 
@@ -230,17 +224,6 @@
             }
         });
         return pages.size > 0 ? pages : new Set([...Array(maxPages).keys()].map(i => i + 1));
-    }
-
-    // Helper function for incrementing/decrementing copies smoothly
-    function adjustCopies(amount) {
-        const copiesInput = document.getElementById('copies');
-        let currentVal = parseInt(copiesInput.value) || 1;
-        currentVal += amount;
-        if (currentVal > 100) currentVal = 100;
-        if (currentVal < 1) currentVal = 1;
-        copiesInput.value = currentVal;
-        calculatePrice();
     }
 
     async function renderPagesWithSettings() {
@@ -479,7 +462,7 @@
         formData.append('orientation', document.getElementById('orientation').value);
         formData.append('duplex', document.getElementById('sides').value === 'double');
         formData.append('page_range', document.getElementById('page-range').value);
-        formData.append('pages_per_sheet', '1'); // Default fallback since block is removed
+        formData.append('pages_per_sheet', '1');
 
         try {
             const res = await fetch('/print-multiple', { method: 'POST', body: formData });
