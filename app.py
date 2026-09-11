@@ -2,7 +2,8 @@ import os
 import json
 import uuid
 import time
-from flask import Flask, request, jsonify, render_template, send_from_directory, session, redirect, url_for
+import base64
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from flask_cors import CORS
 from pypdf import PdfReader
 from flask_sock import Sock
@@ -12,10 +13,8 @@ CORS(app)
 sock = Sock(app)
 app.secret_key = 'campus_print_secure_admin_key_2026'
 
-UPLOAD_FOLDER = 'uploads'
 HISTORY_FILE = 'print_history.json'
 ADMINS_FILE = 'admins.json'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 SUPER_ADMIN_USER = "campus_admin"
 SUPER_ADMIN_PASS = "CampusPrint@2026#Secure"
@@ -59,20 +58,17 @@ def admin_login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        
         if username == SUPER_ADMIN_USER and password == SUPER_ADMIN_PASS:
             session['admin_logged_in'] = True
             session['username'] = username
             session['role'] = 'Super Admin'
             return redirect(url_for('admin_panel'))
-        
         admins = load_admins()
         if username in admins and admins[username]['password'] == password:
             session['admin_logged_in'] = True
             session['username'] = username
             session['role'] = admins[username].get('role', 'Sub-Admin')
             return redirect(url_for('admin_panel'))
-        
         return render_template('admin_login.html', error='Invalid username or password')
     return render_template('admin_login.html')
 
@@ -85,116 +81,11 @@ def admin_logout():
 def admin_panel():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
-    
     history = load_history()
-    total_prints = len(history)
-    total_copies = sum(job.get('copies', 1) for job in history)
-    total_earnings = sum(job.get('total_price', 0) for job in history)
-    
-    is_super = (session.get('username') == SUPER_ADMIN_USER)
-    sub_admins = load_admins() if is_super else {}
-    
-    return render_template('admin.html', 
-                           pending_jobs=PRINT_JOBS, 
-                           history=history,
-                           total_prints=total_prints,
-                           total_copies=total_copies,
-                           total_earnings=total_earnings,
-                           username=session.get('username'),
-                           role=session.get('role'),
-                           is_super_admin=is_super,
-                           sub_admins=sub_admins)
-
-@app.route('/admin/add-admin', methods=['POST'])
-def add_admin():
-    if not session.get('admin_logged_in') or session.get('username') != SUPER_ADMIN_USER:
-        return redirect(url_for('admin_login'))
-    
-    new_user = request.form.get('new_username')
-    new_pass = request.form.get('new_password')
-    if new_user and new_pass and new_user != SUPER_ADMIN_USER:
-        admins = load_admins()
-        admins[new_user] = {'password': new_pass, 'role': 'Sub-Admin'}
-        save_admins(admins)
-    return redirect(url_for('admin_panel'))
-
-@app.route('/admin/delete-admin/', methods=['POST'])
-def delete_admin(username):
-    if not session.get('admin_logged_in') or session.get('username') != SUPER_ADMIN_USER:
-        return redirect(url_for('admin_login'))
-    
-    admins = load_admins()
-    if username in admins:
-        del admins[username]
-        save_admins(admins)
-    return redirect(url_for('admin_panel'))
-
-@app.route('/admin/stats', methods=['GET'])
-def admin_stats():
-    if not session.get('admin_logged_in'):
-        return jsonify({'error': 'Unauthorized'}), 401
-        
-    history = load_history()
-    total_prints = len(history)
-    total_copies = sum(job.get('copies', 1) for job in history)
-    total_earnings = sum(job.get('total_price', 0) for job in history)
-    
-    return jsonify({
-        'pending_count': len(PRINT_JOBS),
-        'total_prints': total_prints,
-        'total_copies': total_copies,
-        'total_earnings': total_earnings
-    })
-
-@app.route('/admin/earnings-breakdown', methods=['GET'])
-def earnings_breakdown():
-    if not session.get('admin_logged_in'):
-        return jsonify({'error': 'Unauthorized'}), 401
-        
-    selected_month = request.args.get('month', '') 
-    history = load_history()
-    
-    filtered_history = []
-    for job in history:
-        timestamp = job.get('timestamp', '')
-        if selected_month:
-            if timestamp.startswith(selected_month):
-                filtered_history.append(job)
-        else:
-            filtered_history.append(job)
-            
-    total_earnings = sum(job.get('total_price', 0) for job in filtered_history)
-    total_copies = sum(job.get('copies', 1) for job in filtered_history)
-    
-    return jsonify({
-        'history': filtered_history,
-        'total_earnings': total_earnings,
-        'total_copies': total_copies,
-        'count': len(filtered_history)
-    })
-
-@app.route('/count-multiple-pages', methods=['POST'])
-def count_multiple_pages():
-    if 'files' not in request.files:
-        return jsonify({'error': 'No files uploaded'}), 400
-    files = request.files.getlist('files')
-    total_pages = 0
-    for file in files:
-        if file.filename != '':
-            ext = os.path.splitext(file.filename)[1].lower()
-            if ext == '.pdf':
-                try:
-                    reader = PdfReader(file)
-                    total_pages += len(reader.pages)
-                except:
-                    total_pages += 1
-            else:
-                total_pages += 1
-    return jsonify({'total_pages': total_pages})
+    return render_template('admin.html', pending_jobs=PRINT_JOBS, history=history, username=session.get('username'))
 
 @app.route('/print-multiple', methods=['POST'])
 def print_multiple():
-    global last_heartbeat_time
     if 'files' not in request.files:
         return jsonify({'error': 'No files uploaded'}), 400
 
@@ -209,32 +100,28 @@ def print_multiple():
     price_per_page = 5 if color_mode == 'color' else 2
     files = request.files.getlist('files')
 
-    base_url = request.host_url.rstrip('/').replace('http://', 'https://')
-
     for file in files:
         if file.filename != '':
             ext = os.path.splitext(file.filename)[1].lower()
             if ext in ['.pdf', '.png', '.jpg', '.jpeg', '.docx', '.pptx', '.doc']:
                 job_id = str(uuid.uuid4())
-                filename = f"{job_id}_{file.filename}"
-                filepath = os.path.join(UPLOAD_FOLDER, filename)
-                file.save(filepath)
+                file_bytes = file.read()
+                file_base64 = base64.b64encode(file_bytes).decode('utf-8')
 
                 pages = 1
                 if ext == '.pdf':
                     try:
-                        reader = PdfReader(filepath)
+                        from io import BytesIO
+                        reader = PdfReader(BytesIO(file_bytes))
                         pages = len(reader.pages)
                     except:
                         pass
                 
                 total_price = pages * copies * price_per_page
-                pdf_url = f"{base_url}/uploads/{filename}"
 
                 job_data = {
                     'id': job_id,
-                    'filename': filename,
-                    'original_name': file.filename,
+                    'filename': file.filename,
                     'copies': copies,
                     'orientation': orientation,
                     'color_mode': color_mode,
@@ -243,17 +130,11 @@ def print_multiple():
                     'page_range': page_range,
                     'pages_per_sheet': pages_per_sheet,
                     'total_price': total_price,
-                    'pdf_url': pdf_url,
+                    'file_data': file_base64,
                     'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
                 }
 
                 PRINT_JOBS.append(job_data)
-
-                for ws in list(connected_printers):
-                    try:
-                        ws.send(json.dumps(job_data))
-                    except:
-                        connected_printers.discard(ws)
 
     return jsonify({'success': True, 'message': 'Print job queued successfully!'})
 
@@ -270,54 +151,17 @@ def printer_status():
     is_online = len(connected_printers) > 0 or ((current_time - last_heartbeat_time) < 15 if last_heartbeat_time > 0 else False)
     return jsonify({'online': is_online})
 
-@app.route('/uploads/', methods=['GET'])
-def download_file(filename):
-    return send_from_directory(UPLOAD_FOLDER, filename)
-
 @app.route('/complete-job/', methods=['POST'])
 def complete_job(job_id):
     global PRINT_JOBS
     job = next((j for j in PRINT_JOBS if j['id'] == job_id), None)
     if job:
-        filepath = os.path.join(UPLOAD_FOLDER, job['filename'])
-        if os.path.exists(filepath):
-            os.remove(filepath)
-        
         PRINT_JOBS = [j for j in PRINT_JOBS if j['id'] != job_id]
-        
         history = load_history()
         history.insert(0, job)
         save_history(history)
-        
         return jsonify({'success': True})
     return jsonify({'error': 'Job not found'}), 404
-
-@sock.route('/ws/printer')
-def printer_websocket(ws):
-    global last_heartbeat_time
-    connected_printers.add(ws)
-    last_heartbeat_time = time.time()
-    try:
-        for job in PRINT_JOBS:
-            ws.send(json.dumps(job))
-        
-        while True:
-            try:
-                message = ws.receive(timeout=10)
-                if message is None:
-                    break
-                last_heartbeat_time = time.time()
-                data = json.loads(message)
-                if data.get("type") == "ping":
-                    ws.send(json.dumps({"type": "pong"}))
-            except TimeoutError:
-                ws.send(json.dumps({"type": "ping"}))
-            except Exception:
-                break
-    except Exception as e:
-        print(f"WebSocket error: {e}")
-    finally:
-        connected_printers.discard(ws)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
