@@ -5,9 +5,11 @@ import time
 from flask import Flask, request, jsonify, render_template, send_from_directory, session, redirect, url_for
 from flask_cors import CORS
 from pypdf import PdfReader
+from flask_sock import Sock
 
 app = Flask(__name__)
 CORS(app)
+sock = Sock(app)
 app.secret_key = 'campus_print_secure_admin_key_2026'
 
 UPLOAD_FOLDER = 'uploads'
@@ -15,12 +17,13 @@ HISTORY_FILE = 'print_history.json'
 ADMINS_FILE = 'admins.json'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Main Super Admin Credentials (Aapka account)
+# Main Super Admin Credentials
 SUPER_ADMIN_USER = "campus_admin"
 SUPER_ADMIN_PASS = "CampusPrint@2026#Secure"
 
-# In-memory active queue
+# In-memory active queue & connected printer websockets tracking
 PRINT_JOBS = []
+connected_printers = set()
 last_heartbeat_time = 0
 
 def load_history():
@@ -60,14 +63,12 @@ def admin_login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        # Check Super Admin
         if username == SUPER_ADMIN_USER and password == SUPER_ADMIN_PASS:
             session['admin_logged_in'] = True
             session['username'] = username
             session['role'] = 'Super Admin'
             return redirect(url_for('admin_panel'))
         
-        # Check Sub-Admins
         admins = load_admins()
         if username in admins and admins[username]['password'] == password:
             session['admin_logged_in'] = True
@@ -78,13 +79,11 @@ def admin_login():
         return render_template('admin_login.html', error='Invalid username or password')
     return render_template('admin_login.html')
 
-# Admin Logout Route
 @app.route('/admin/logout')
 def admin_logout():
     session.clear()
     return redirect(url_for('admin_login'))
 
-# Admin Dashboard Route
 @app.route('/admin')
 def admin_panel():
     if not session.get('admin_logged_in'):
@@ -109,7 +108,6 @@ def admin_panel():
                            is_super_admin=is_super,
                            sub_admins=sub_admins)
 
-# Super Admin: Add Sub-Admin
 @app.route('/admin/add-admin', methods=['POST'])
 def add_admin():
     if not session.get('admin_logged_in') or session.get('username') != SUPER_ADMIN_USER:
@@ -123,8 +121,7 @@ def add_admin():
         save_admins(admins)
     return redirect(url_for('admin_panel'))
 
-# Super Admin: Delete Sub-Admin
-@app.route('/admin/delete-admin/<username>', methods=['POST'])
+@app.route('/admin/delete-admin/', methods=['POST'])
 def delete_admin(username):
     if not session.get('admin_logged_in') or session.get('username') != SUPER_ADMIN_USER:
         return redirect(url_for('admin_login'))
@@ -135,7 +132,6 @@ def delete_admin(username):
         save_admins(admins)
     return redirect(url_for('admin_panel'))
 
-# API for Live Stats & Polling
 @app.route('/admin/stats', methods=['GET'])
 def admin_stats():
     if not session.get('admin_logged_in'):
@@ -153,13 +149,12 @@ def admin_stats():
         'total_earnings': total_earnings
     })
 
-# API for Earnings Breakdown with Monthly Filter
 @app.route('/admin/earnings-breakdown', methods=['GET'])
 def earnings_breakdown():
     if not session.get('admin_logged_in'):
         return jsonify({'error': 'Unauthorized'}), 401
         
-    selected_month = request.args.get('month', '') # Format YYYY-MM
+    selected_month = request.args.get('month', '') 
     history = load_history()
     
     filtered_history = []
@@ -181,7 +176,6 @@ def earnings_breakdown():
         'count': len(filtered_history)
     })
 
-# Page Count & Print Queue Endpoints
 @app.route('/count-multiple-pages', methods=['POST'])
 def count_multiple_pages():
     if 'files' not in request.files:
@@ -203,6 +197,7 @@ def count_multiple_pages():
 
 @app.route('/print-multiple', methods=['POST'])
 def print_multiple():
+    global last_heartbeat_time
     if 'files' not in request.files:
         return jsonify({'error': 'No files uploaded'}), 400
 
@@ -216,6 +211,8 @@ def print_multiple():
     
     price_per_page = 5 if color_mode == 'color' else 2
     files = request.files.getlist('files')
+
+    base_url = request.host_url.rstrip('/')
 
     for file in files:
         if file.filename != '':
@@ -235,8 +232,9 @@ def print_multiple():
                         pass
                 
                 total_price = pages * copies * price_per_page
+                pdf_url = f"{base_url}/uploads/{filename}"
 
-                PRINT_JOBS.append({
+                job_data = {
                     'id': job_id,
                     'filename': filename,
                     'original_name': file.filename,
@@ -248,9 +246,20 @@ def print_multiple():
                     'page_range': page_range,
                     'pages_per_sheet': pages_per_sheet,
                     'total_price': total_price,
+                    'pdf_url': pdf_url,
                     'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
-                })
-    return jsonify({'success': True, 'message': 'Print job queued successfully!'})
+                }
+
+                PRINT_JOBS.append(job_data)
+
+                # Broadcast job to connected Raspberry Pi printers via WebSockets
+                for ws in list(connected_printers):
+                    try:
+                        ws.send(json.dumps(job_data))
+                    except:
+                        connected_printers.discard(ws)
+
+    return jsonify({'success': True, 'message': 'Print job queued and broadcasted successfully!'})
 
 @app.route('/get-pending-jobs', methods=['GET'])
 def get_pending_jobs():
@@ -262,14 +271,14 @@ def get_pending_jobs():
 def printer_status():
     global last_heartbeat_time
     current_time = time.time()
-    is_online = (current_time - last_heartbeat_time) < 15 if last_heartbeat_time > 0 else False
+    is_online = len(connected_printers) > 0 or ((current_time - last_heartbeat_time) < 15 if last_heartbeat_time > 0 else False)
     return jsonify({'online': is_online})
 
-@app.route('/uploads/<filename>', methods=['GET'])
+@app.route('/uploads/', methods=['GET'])
 def download_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
-@app.route('/complete-job/<job_id>', methods=['POST'])
+@app.route('/complete-job/', methods=['POST'])
 def complete_job(job_id):
     global PRINT_JOBS
     job = next((j for j in PRINT_JOBS if j['id'] == job_id), None)
@@ -280,7 +289,6 @@ def complete_job(job_id):
         
         PRINT_JOBS = [j for j in PRINT_JOBS if j['id'] != job_id]
         
-        # Save to persistent history file
         history = load_history()
         history.insert(0, job)
         save_history(history)
@@ -288,7 +296,28 @@ def complete_job(job_id):
         return jsonify({'success': True})
     return jsonify({'error': 'Job not found'}), 404
 
+# WebSocket Route for Raspberry Pi Printer connection
+@sock.route('/ws/printer')
+def printer_websocket(ws):
+    global last_heartbeat_time
+    connected_printers.add(ws)
+    last_heartbeat_time = time.time()
+    try:
+        # Send any existing pending jobs upon connection
+        for job in PRINT_JOBS:
+            ws.send(json.dumps(job))
+        
+        while True:
+            message = ws.receive()
+            if message is None:
+                break
+            last_heartbeat_time = time.time()
+            # Can handle heartbeat ping/pong messages here if needed
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+    finally:
+        connected_printers.discard(ws)
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-        
