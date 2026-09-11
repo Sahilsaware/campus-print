@@ -209,7 +209,7 @@ def print_multiple():
     price_per_page = 5 if color_mode == 'color' else 2
     files = request.files.getlist('files')
 
-    base_url = request.host_url.rstrip('/')
+    base_url = request.host_url.rstrip('/').replace('http://', 'https://')
 
     for file in files:
         if file.filename != '':
@@ -255,7 +255,7 @@ def print_multiple():
                     except:
                         connected_printers.discard(ws)
 
-    return jsonify({'success': True, 'message': 'Print job queued and broadcasted successfully!'})
+    return jsonify({'success': True, 'message': 'Print job queued successfully!'})
 
 @app.route('/get-pending-jobs', methods=['GET'])
 def get_pending_jobs():
