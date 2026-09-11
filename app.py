@@ -84,6 +84,29 @@ def admin_panel():
     history = load_history()
     return render_template('admin.html', pending_jobs=PRINT_JOBS, history=history, username=session.get('username'))
 
+@app.route('/count-multiple-pages', methods=['POST'])
+def count_multiple_pages():
+    if 'files' not in request.files:
+        return jsonify({'error': 'No files uploaded'}), 400
+    
+    total_pages = 0
+    files = request.files.getlist('files')
+    for file in files:
+        if file.filename != '':
+            ext = os.path.splitext(file.filename)[1].lower()
+            if ext == '.pdf':
+                try:
+                    from io import BytesIO
+                    file_bytes = file.read()
+                    reader = PdfReader(BytesIO(file_bytes))
+                    total_pages += len(reader.pages)
+                except:
+                    total_pages += 1
+            else:
+                total_pages += 1
+                
+    return jsonify({'success': True, 'total_pages': total_pages})
+
 @app.route('/print-multiple', methods=['POST'])
 def print_multiple():
     if 'files' not in request.files:
