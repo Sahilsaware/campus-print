@@ -6,6 +6,7 @@ from flask import Flask, request, jsonify, render_template, send_from_directory,
 from flask_cors import CORS
 from pypdf import PdfReader
 from flask_sock import Sock
+from a2wsgi import WSGIMiddleware
 
 app = Flask(__name__)
 CORS(app)
@@ -17,11 +18,9 @@ HISTORY_FILE = 'print_history.json'
 ADMINS_FILE = 'admins.json'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Main Super Admin Credentials
 SUPER_ADMIN_USER = "campus_admin"
 SUPER_ADMIN_PASS = "CampusPrint@2026#Secure"
 
-# In-memory active queue & connected printer websockets tracking
 PRINT_JOBS = []
 connected_printers = set()
 last_heartbeat_time = 0
@@ -56,7 +55,6 @@ def save_admins(admins):
 def home():
     return render_template('index.html')
 
-# Admin Login Route
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     if request.method == 'POST':
@@ -252,7 +250,6 @@ def print_multiple():
 
                 PRINT_JOBS.append(job_data)
 
-                # Broadcast job to connected Raspberry Pi printers via WebSockets
                 for ws in list(connected_printers):
                     try:
                         ws.send(json.dumps(job_data))
@@ -296,14 +293,12 @@ def complete_job(job_id):
         return jsonify({'success': True})
     return jsonify({'error': 'Job not found'}), 404
 
-# WebSocket Route for Raspberry Pi Printer connection
 @sock.route('/ws/printer')
 def printer_websocket(ws):
     global last_heartbeat_time
     connected_printers.add(ws)
     last_heartbeat_time = time.time()
     try:
-        # Send any existing pending jobs upon connection
         for job in PRINT_JOBS:
             ws.send(json.dumps(job))
         
@@ -312,11 +307,13 @@ def printer_websocket(ws):
             if message is None:
                 break
             last_heartbeat_time = time.time()
-            # Can handle heartbeat ping/pong messages here if needed
     except Exception as e:
         print(f"WebSocket error: {e}")
     finally:
         connected_printers.discard(ws)
+
+# ASGI Application wrapper for Uvicorn
+asgi_app = WSGIMiddleware(app)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
