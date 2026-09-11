@@ -175,9 +175,7 @@ def printer_status():
     is_online = len(connected_printers) > 0 or ((current_time - last_heartbeat_time) < 15 if last_heartbeat_time > 0 else False)
     return jsonify({'online': is_online})
 
-# Fixed route decorators with proper  parameter
-@app.route('/complete-job/', methods=['POST'])
-@app.route('/complete-job//', methods=['POST'])
+@app.route('/complete-job/' + '<' + 'job_id' + '>', methods=['POST'])
 def complete_job(job_id):
     global PRINT_JOBS
     job = next((j for j in PRINT_JOBS if j['id'] == job_id), None)
