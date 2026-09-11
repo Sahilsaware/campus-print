@@ -4,3 +4,4 @@ pypdf==4.1.0
 gunicorn==21.2.0
 Flask-Sock==0.7.0
 uvicorn
+a2wsgi
