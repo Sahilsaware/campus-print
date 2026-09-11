@@ -302,10 +302,18 @@ def printer_websocket(ws):
             ws.send(json.dumps(job))
         
         while True:
-            message = ws.receive()
-            if message is None:
+            try:
+                message = ws.receive(timeout=10)
+                if message is None:
+                    break
+                last_heartbeat_time = time.time()
+                data = json.loads(message)
+                if data.get("type") == "ping":
+                    ws.send(json.dumps({"type": "pong"}))
+            except TimeoutError:
+                ws.send(json.dumps({"type": "ping"}))
+            except Exception:
                 break
-            last_heartbeat_time = time.time()
     except Exception as e:
         print(f"WebSocket error: {e}")
     finally:
