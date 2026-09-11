@@ -175,7 +175,7 @@ def printer_status():
     is_online = len(connected_printers) > 0 or ((current_time - last_heartbeat_time) < 15 if last_heartbeat_time > 0 else False)
     return jsonify({'online': is_online})
 
-# Correct route mapping for job completion
+# Fixed route decorators with proper  parameter
 @app.route('/complete-job/', methods=['POST'])
 @app.route('/complete-job//', methods=['POST'])
 def complete_job(job_id):
