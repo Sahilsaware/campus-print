@@ -175,6 +175,7 @@ def printer_status():
     return jsonify({'online': is_online})
 
 @app.route('/complete-job/', methods=['POST'])
+@app.route('/complete-job//', methods=['POST'])
 def complete_job(job_id):
     global PRINT_JOBS
     job = next((j for j in PRINT_JOBS if j['id'] == job_id), None)
