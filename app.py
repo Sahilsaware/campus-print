@@ -6,7 +6,6 @@ from flask import Flask, request, jsonify, render_template, send_from_directory,
 from flask_cors import CORS
 from pypdf import PdfReader
 from flask_sock import Sock
-from a2wsgi import WSGIMiddleware
 
 app = Flask(__name__)
 CORS(app)
@@ -311,9 +310,6 @@ def printer_websocket(ws):
         print(f"WebSocket error: {e}")
     finally:
         connected_printers.discard(ws)
-
-# ASGI Application wrapper for Uvicorn
-asgi_app = WSGIMiddleware(app)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
