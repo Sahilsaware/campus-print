@@ -3,6 +3,7 @@ import json
 import uuid
 import time
 import base64
+import subprocess
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from flask_cors import CORS
 from pypdf import PdfReader
@@ -170,9 +171,14 @@ def get_pending_jobs():
 
 @app.route('/printer-status', methods=['GET'])
 def printer_status():
-    global last_heartbeat_time
-    current_time = time.time()
-    is_online = len(connected_printers) > 0 or ((current_time - last_heartbeat_time) < 15 if last_heartbeat_time > 0 else False)
+    try:
+        # Real-time CUPS status check for the 'Kiosk' printer
+        result = subprocess.run(['lpstat', '-p', 'Kiosk'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        output = result.stdout.lower()
+        is_online = 'idle' in output or 'printing' in output
+    except Exception:
+        is_online = False
+        
     return jsonify({'online': is_online})
 
 @app.route('/complete-job/' + '<' + 'job_id' + '>', methods=['POST'])
