@@ -3,11 +3,17 @@ import json
 import uuid
 import time
 import base64
-import cups
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from flask_cors import CORS
 from pypdf import PdfReader
 from flask_sock import Sock
+
+# Safely try importing pycups (only works if system packages are present like on Pi)
+try:
+    import cups
+    CUPS_AVAILABLE = True
+except ImportError:
+    CUPS_AVAILABLE = False
 
 # Gunicorn expects this exact variable 'app' at the top level
 app = Flask(__name__)
@@ -171,12 +177,15 @@ def get_pending_jobs():
 
 @app.route('/printer-status', methods=['GET'])
 def printer_status():
+    if not CUPS_AVAILABLE:
+        # If running on Render or somewhere without CUPS, return True or handle gracefully
+        return jsonify({'online': True})
+    
     try:
         conn = cups.Connection()
         printers = conn.getPrinters()
         if 'Kiosk' in printers:
             printer_info = printers['Kiosk']
-            # printer-state: 3 = idle, 4 = printing, 5 = stopped
             state = printer_info.get('printer-state', 0)
             is_online = state in [3, 4]
         else:
