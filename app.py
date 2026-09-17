@@ -8,14 +8,6 @@ from flask_cors import CORS
 from pypdf import PdfReader
 from flask_sock import Sock
 
-# Safely try importing pycups (only works if system packages are present like on Pi)
-try:
-    import cups
-    CUPS_AVAILABLE = True
-except ImportError:
-    CUPS_AVAILABLE = False
-
-# Gunicorn expects this exact variable 'app' at the top level
 app = Flask(__name__)
 CORS(app)
 sock = Sock(app)
@@ -28,8 +20,8 @@ SUPER_ADMIN_USER = "campus_admin"
 SUPER_ADMIN_PASS = "CampusPrint@2026#Secure"
 
 PRINT_JOBS = []
-connected_printers = set()
 last_heartbeat_time = 0
+PI_PRINTER_ONLINE = False  # Pi swatah sangel ki printer online ahe ka nahi
 
 def load_history():
     if os.path.exists(HISTORY_FILE):
@@ -169,31 +161,37 @@ def print_multiple():
 
     return jsonify({'success': True, 'message': 'Print job queued successfully!'})
 
-@app.route('/get-pending-jobs', methods=['GET'])
+@app.route('/get-pending-jobs', methods=['GET', 'POST'])
 def get_pending_jobs():
-    global last_heartbeat_time
+    global last_heartbeat_time, PI_PRINTER_ONLINE
     last_heartbeat_time = time.time()
+    
+    # Raspberry Pi status update pathvu shakte (JSON body kinva query params madhe)
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        if 'printer_online' in data:
+            PI_PRINTER_ONLINE = bool(data['printer_online'])
+    
     return jsonify({'jobs': PRINT_JOBS})
+
+# Pi ya route var status update karu shakto
+@app.route('/update-status', methods=['POST'])
+def update_status():
+    global PI_PRINTER_ONLINE, last_heartbeat_time
+    last_heartbeat_time = time.time()
+    data = request.get_json(silent=True) or {}
+    PI_PRINTER_ONLINE = bool(data.get('printer_online', False))
+    return jsonify({'success': True})
 
 @app.route('/printer-status', methods=['GET'])
 def printer_status():
-    if not CUPS_AVAILABLE:
-        # If running on Render or somewhere without CUPS, return True or handle gracefully
-        return jsonify({'online': True})
+    global last_heartbeat_time, PI_PRINTER_ONLINE
     
-    try:
-        conn = cups.Connection()
-        printers = conn.getPrinters()
-        if 'Kiosk' in printers:
-            printer_info = printers['Kiosk']
-            state = printer_info.get('printer-state', 0)
-            is_online = state in [3, 4]
-        else:
-            is_online = False
-    except Exception:
-        is_online = False
+    # Jar Pi ne last 10 secondat heartbeat pathvla nasel, tr Pi offline ahe ase samja
+    if time.time() - last_heartbeat_time > 15:
+        PI_PRINTER_ONLINE = False
         
-    return jsonify({'online': is_online})
+    return jsonify({'online': PI_PRINTER_ONLINE})
 
 @app.route('/complete-job/' + '<' + 'job_id' + '>', methods=['POST'])
 def complete_job(job_id):
