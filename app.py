@@ -3,7 +3,7 @@ import json
 import uuid
 import time
 import base64
-import subprocess
+import cups
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from flask_cors import CORS
 from pypdf import PdfReader
@@ -172,8 +172,15 @@ def get_pending_jobs():
 @app.route('/printer-status', methods=['GET'])
 def printer_status():
     try:
-        result = subprocess.run(['lsusb'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        is_online = 'Canon' in result.stdout or len(result.stdout.strip()) > 0
+        conn = cups.Connection()
+        printers = conn.getPrinters()
+        if 'Kiosk' in printers:
+            printer_info = printers['Kiosk']
+            # printer-state: 3 = idle, 4 = printing, 5 = stopped
+            state = printer_info.get('printer-state', 0)
+            is_online = state in [3, 4]
+        else:
+            is_online = False
     except Exception:
         is_online = False
         
