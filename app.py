@@ -171,8 +171,15 @@ def get_pending_jobs():
 
 @app.route('/printer-status', methods=['GET'])
 def printer_status():
-    # Force online so the UI popup never blocks the user since CUPS is configured
-    return jsonify({'online': True})
+    try:
+        # Check if the physical Canon printer is connected via USB
+        result = subprocess.run(['lsusb'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        # Check if Canon or the specific device signature is present
+        is_online = 'Canon' in result.stdout or len(result.stdout.strip()) > 0
+    except Exception:
+        is_online = False
+        
+    return jsonify({'online': is_online})
 
 @app.route('/complete-job/' + '<' + 'job_id' + '>', methods=['POST'])
 def complete_job(job_id):
