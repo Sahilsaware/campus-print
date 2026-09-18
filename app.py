@@ -53,26 +53,6 @@ def save_admins(admins):
     with open(ADMINS_FILE, 'w') as f:
         json.dump(admins, f, indent=4)
 
-def get_default_printer():
-    """CUPS se automatically active ya default printer ka naam nikalta hai (Dynamic support)"""
-    try:
-        result = subprocess.run(['lpstat', '-d'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        if result.returncode == 0:
-            # Output format: "system default destination: Printer_Name"
-            parts = result.stdout.strip().split(':')
-            if len(parts) > 1:
-                return parts[1].strip()
-        
-        # Agar default set nahi hai, toh pehla available printer utha lo
-        result2 = subprocess.run(['lpstat', '-p'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        if result2.returncode == 0:
-            for line in result2.stdout.splitlines():
-                if line.startswith('printer'):
-                    return line.split()[1]
-    except Exception:
-        pass
-    return None
-
 @app.route('/')
 def home():
     return render_template('index.html')
@@ -154,13 +134,11 @@ def print_multiple():
                 job_id = str(uuid.uuid4())
                 file_bytes = file.read()
                 
-                # Save file locally for processing/printing
                 local_filename = f"{job_id}{ext}"
                 local_path = os.path.join(UPLOAD_FOLDER, local_filename)
                 with open(local_path, 'wb') as f:
                     f.write(file_bytes)
 
-                # Convert Word/PPT to PDF automatically using libreoffice if needed
                 print_path = local_path
                 if ext in ['.docx', '.doc', '.pptx']:
                     try:
@@ -170,7 +148,7 @@ def print_multiple():
                         if os.path.exists(converted_pdf_path):
                             print_path = converted_pdf_path
                     except Exception:
-                        pass # Fallback to original if conversion tool missing
+                        pass
 
                 pages = 1
                 if print_path.endswith('.pdf'):
@@ -182,10 +160,16 @@ def print_multiple():
                 
                 total_price = pages * copies * price_per_page
 
+                # Read file into Base64 so Raspberry Pi worker can decode and print it
+                file_b64 = ""
+                if os.path.exists(print_path):
+                    with open(print_path, "rb") as pf:
+                        file_b64 = base64.b64encode(pf.read()).decode('utf-8')
+
                 job_data = {
                     'id': job_id,
                     'filename': file.filename,
-                    'file_path': print_path,
+                    'file_data': file_b64,
                     'copies': copies,
                     'orientation': orientation,
                     'color_mode': color_mode,
@@ -197,50 +181,9 @@ def print_multiple():
                     'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
                 }
 
-                # Automatically trigger local print execution if running on the print server/Pi
-                execute_local_print(job_data)
-
                 PRINT_JOBS.append(job_data)
 
-    return jsonify({'success': True, 'message': 'Print job processed and sent successfully!'})
-
-def execute_local_print(job):
-    """Dynamically finds any available printer and applies exact layout settings (Duplex, Landscape, Copies)"""
-    printer_name = get_default_printer()
-    if not printer_name:
-        return # No printer available to dispatch
-
-    options = []
-    
-    # 1. Orientation Handling
-    if job.get('orientation') == 'landscape':
-        options.extend(['-o', 'landscape'])
-    else:
-        options.extend(['-o', 'portrait'])
-        
-    # 2. Duplex / Sides Handling
-    if job.get('duplex'):
-        options.extend(['-o', 'sides=two-sided-long-edge'])
-    else:
-        options.extend(['-o', 'sides=one-sided'])
-        
-    # 3. Copies Handling
-    copies = job.get('copies', 1)
-    options.extend(['-n', str(copies)])
-
-    # 4. Page Range Handling (if specified)
-    page_range = job.get('page_range', '').strip()
-    if page_range and page_range.lower() != 'all pages':
-        options.extend(['-o', f'page-ranges={page_range}'])
-
-    # Execute lp command dynamically
-    file_path = job.get('file_path')
-    if file_path and os.path.exists(file_path):
-        cmd = ['lp', '-d', printer_name] + options + [file_path]
-        try:
-            subprocess.run(cmd, check=True)
-        except Exception:
-            pass
+    return jsonify({'success': True, 'message': 'Print job queued successfully!'})
 
 @app.route('/get-pending-jobs', methods=['GET', 'POST'])
 def get_pending_jobs():
@@ -286,3 +229,4 @@ def complete_job(job_id):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+                        
