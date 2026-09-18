@@ -3,6 +3,7 @@ import json
 import uuid
 import time
 import base64
+import subprocess
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from flask_cors import CORS
 from pypdf import PdfReader
@@ -15,13 +16,16 @@ app.secret_key = 'campus_print_secure_admin_key_2026'
 
 HISTORY_FILE = 'print_history.json'
 ADMINS_FILE = 'admins.json'
+UPLOAD_FOLDER = 'uploads'
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 SUPER_ADMIN_USER = "campus_admin"
 SUPER_ADMIN_PASS = "CampusPrint@2026#Secure"
 
 PRINT_JOBS = []
 last_heartbeat_time = 0
-PI_PRINTER_ONLINE = False  # Pi swatah sangel ki printer online ahe ka nahi
+PI_PRINTER_ONLINE = False
 
 def load_history():
     if os.path.exists(HISTORY_FILE):
@@ -48,6 +52,26 @@ def load_admins():
 def save_admins(admins):
     with open(ADMINS_FILE, 'w') as f:
         json.dump(admins, f, indent=4)
+
+def get_default_printer():
+    """CUPS se automatically active ya default printer ka naam nikalta hai (Dynamic support)"""
+    try:
+        result = subprocess.run(['lpstat', '-d'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if result.returncode == 0:
+            # Output format: "system default destination: Printer_Name"
+            parts = result.stdout.strip().split(':')
+            if len(parts) > 1:
+                return parts[1].strip()
+        
+        # Agar default set nahi hai, toh pehla available printer utha lo
+        result2 = subprocess.run(['lpstat', '-p'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if result2.returncode == 0:
+            for line in result2.stdout.splitlines():
+                if line.startswith('printer'):
+                    return line.split()[1]
+    except Exception:
+        pass
+    return None
 
 @app.route('/')
 def home():
@@ -129,13 +153,29 @@ def print_multiple():
             if ext in ['.pdf', '.png', '.jpg', '.jpeg', '.docx', '.pptx', '.doc']:
                 job_id = str(uuid.uuid4())
                 file_bytes = file.read()
-                file_base64 = base64.b64encode(file_bytes).decode('utf-8')
+                
+                # Save file locally for processing/printing
+                local_filename = f"{job_id}{ext}"
+                local_path = os.path.join(UPLOAD_FOLDER, local_filename)
+                with open(local_path, 'wb') as f:
+                    f.write(file_bytes)
+
+                # Convert Word/PPT to PDF automatically using libreoffice if needed
+                print_path = local_path
+                if ext in ['.docx', '.doc', '.pptx']:
+                    try:
+                        subprocess.run(['libreoffice', '--headless', '--convert-to', 'pdf', local_path, '--outdir', UPLOAD_FOLDER], check=True)
+                        pdf_filename = f"{job_id}.pdf"
+                        converted_pdf_path = os.path.join(UPLOAD_FOLDER, pdf_filename)
+                        if os.path.exists(converted_pdf_path):
+                            print_path = converted_pdf_path
+                    except Exception:
+                        pass # Fallback to original if conversion tool missing
 
                 pages = 1
-                if ext == '.pdf':
+                if print_path.endswith('.pdf'):
                     try:
-                        from io import BytesIO
-                        reader = PdfReader(BytesIO(file_bytes))
+                        reader = PdfReader(print_path)
                         pages = len(reader.pages)
                     except Exception:
                         pass
@@ -145,6 +185,7 @@ def print_multiple():
                 job_data = {
                     'id': job_id,
                     'filename': file.filename,
+                    'file_path': print_path,
                     'copies': copies,
                     'orientation': orientation,
                     'color_mode': color_mode,
@@ -153,20 +194,59 @@ def print_multiple():
                     'page_range': page_range,
                     'pages_per_sheet': pages_per_sheet,
                     'total_price': total_price,
-                    'file_data': file_base64,
                     'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
                 }
 
+                # Automatically trigger local print execution if running on the print server/Pi
+                execute_local_print(job_data)
+
                 PRINT_JOBS.append(job_data)
 
-    return jsonify({'success': True, 'message': 'Print job queued successfully!'})
+    return jsonify({'success': True, 'message': 'Print job processed and sent successfully!'})
+
+def execute_local_print(job):
+    """Dynamically finds any available printer and applies exact layout settings (Duplex, Landscape, Copies)"""
+    printer_name = get_default_printer()
+    if not printer_name:
+        return # No printer available to dispatch
+
+    options = []
+    
+    # 1. Orientation Handling
+    if job.get('orientation') == 'landscape':
+        options.extend(['-o', 'landscape'])
+    else:
+        options.extend(['-o', 'portrait'])
+        
+    # 2. Duplex / Sides Handling
+    if job.get('duplex'):
+        options.extend(['-o', 'sides=two-sided-long-edge'])
+    else:
+        options.extend(['-o', 'sides=one-sided'])
+        
+    # 3. Copies Handling
+    copies = job.get('copies', 1)
+    options.extend(['-n', str(copies)])
+
+    # 4. Page Range Handling (if specified)
+    page_range = job.get('page_range', '').strip()
+    if page_range and page_range.lower() != 'all pages':
+        options.extend(['-o', f'page-ranges={page_range}'])
+
+    # Execute lp command dynamically
+    file_path = job.get('file_path')
+    if file_path and os.path.exists(file_path):
+        cmd = ['lp', '-d', printer_name] + options + [file_path]
+        try:
+            subprocess.run(cmd, check=True)
+        except Exception:
+            pass
 
 @app.route('/get-pending-jobs', methods=['GET', 'POST'])
 def get_pending_jobs():
     global last_heartbeat_time, PI_PRINTER_ONLINE
     last_heartbeat_time = time.time()
     
-    # Raspberry Pi status update pathvu shakte (JSON body kinva query params madhe)
     if request.method == 'POST':
         data = request.get_json(silent=True) or {}
         if 'printer_online' in data:
@@ -174,7 +254,6 @@ def get_pending_jobs():
     
     return jsonify({'jobs': PRINT_JOBS})
 
-# Pi ya route var status update karu shakto
 @app.route('/update-status', methods=['POST'])
 def update_status():
     global PI_PRINTER_ONLINE, last_heartbeat_time
@@ -187,13 +266,12 @@ def update_status():
 def printer_status():
     global last_heartbeat_time, PI_PRINTER_ONLINE
     
-    # Jar Pi ne last 10 secondat heartbeat pathvla nasel, tr Pi offline ahe ase samja
     if time.time() - last_heartbeat_time > 15:
         PI_PRINTER_ONLINE = False
         
     return jsonify({'online': PI_PRINTER_ONLINE})
 
-@app.route('/complete-job/' + '<' + 'job_id' + '>', methods=['POST'])
+@app.route('/complete-job/<job_id>', methods=['POST'])
 def complete_job(job_id):
     global PRINT_JOBS
     job = next((j for j in PRINT_JOBS if j['id'] == job_id), None)
