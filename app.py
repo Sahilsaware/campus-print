@@ -15,6 +15,7 @@ sock = Sock(app)
 app.secret_key = 'campus_print_secure_admin_key_2026'
 
 HISTORY_FILE = 'print_history.json'
+PENDING_JOBS_FILE = 'pending_jobs.json'
 ADMINS_FILE = 'admins.json'
 UPLOAD_FOLDER = 'uploads'
 
@@ -23,7 +24,6 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 SUPER_ADMIN_USER = "campus_admin"
 SUPER_ADMIN_PASS = "CampusPrint@2026#Secure"
 
-PRINT_JOBS = []
 last_heartbeat_time = 0
 PI_PRINTER_ONLINE = False
 
@@ -39,6 +39,19 @@ def load_history():
 def save_history(history):
     with open(HISTORY_FILE, 'w') as f:
         json.dump(history, f, indent=4)
+
+def load_pending_jobs():
+    if os.path.exists(PENDING_JOBS_FILE):
+        try:
+            with open(PENDING_JOBS_FILE, 'r') as f:
+                return json.load(f)
+        except Exception:
+            return []
+    return []
+
+def save_pending_jobs(jobs):
+    with open(PENDING_JOBS_FILE, 'w') as f:
+        json.dump(jobs, f, indent=4)
 
 def load_admins():
     if os.path.exists(ADMINS_FILE):
@@ -86,7 +99,8 @@ def admin_panel():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     history = load_history()
-    return render_template('admin.html', pending_jobs=PRINT_JOBS, history=history, username=session.get('username'))
+    pending_jobs = load_pending_jobs()
+    return render_template('admin.html', pending_jobs=pending_jobs, history=history, username=session.get('username'))
 
 @app.route('/count-multiple-pages', methods=['POST'])
 def count_multiple_pages():
@@ -127,6 +141,8 @@ def print_multiple():
     price_per_page = 5 if color_mode == 'color' else 2
     files = request.files.getlist('files')
 
+    pending_jobs = load_pending_jobs()
+
     for file in files:
         if file.filename != '':
             ext = os.path.splitext(file.filename)[1].lower()
@@ -160,7 +176,6 @@ def print_multiple():
                 
                 total_price = pages * copies * price_per_page
 
-                # Read file into Base64 so Raspberry Pi worker can decode and print it
                 file_b64 = ""
                 if os.path.exists(print_path):
                     with open(print_path, "rb") as pf:
@@ -181,8 +196,9 @@ def print_multiple():
                     'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
                 }
 
-                PRINT_JOBS.append(job_data)
+                pending_jobs.append(job_data)
 
+    save_pending_jobs(pending_jobs)
     return jsonify({'success': True, 'message': 'Print job queued successfully!'})
 
 @app.route('/get-pending-jobs', methods=['GET', 'POST'])
@@ -195,7 +211,8 @@ def get_pending_jobs():
         if 'printer_online' in data:
             PI_PRINTER_ONLINE = bool(data['printer_online'])
     
-    return jsonify({'jobs': PRINT_JOBS})
+    pending_jobs = load_pending_jobs()
+    return jsonify({'jobs': pending_jobs})
 
 @app.route('/update-status', methods=['POST'])
 def update_status():
@@ -216,10 +233,11 @@ def printer_status():
 
 @app.route('/complete-job/<job_id>', methods=['POST'])
 def complete_job(job_id):
-    global PRINT_JOBS
-    job = next((j for j in PRINT_JOBS if j['id'] == job_id), None)
+    pending_jobs = load_pending_jobs()
+    job = next((j for j in pending_jobs if j['id'] == job_id), None)
     if job:
-        PRINT_JOBS = [j for j in PRINT_JOBS if j['id'] != job_id]
+        pending_jobs = [j for j in pending_jobs if j['id'] != job_id]
+        save_pending_jobs(pending_jobs)
         history = load_history()
         history.insert(0, job)
         save_history(history)
@@ -229,4 +247,3 @@ def complete_job(job_id):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-                        
