@@ -32,7 +32,7 @@
     </div>
 
     <div class="kiosk-card">
-        <!-- Step 1: Home (Clean & Minimalist Redesign) -->
+        <!-- Step 1: Home -->
         <div class="step-content active" id="step-1">
             <div class="hero-image-container">
                 <svg class="hero-svg" viewBox="0 0 260 150" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -162,27 +162,22 @@
     </div>
 </div>
 
-<!-- Custom Ultra-Attractive Modal Popup -->
+<!-- Custom Modal Popup -->
 <div id="customAlertModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.85); z-index:99999; justify-content:center; align-items:center; backdrop-filter: blur(8px);">
-    <div style="background:linear-gradient(145deg, #1e293b, #0f172a); width:90%; max-width:440px; border-radius:20px; padding:30px 24px; border:1px solid rgba(56, 189, 248, 0.25); box-shadow: 0 20px 45px rgba(0,0,0,0.7); text-align:center; animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
-        
-        <div style="display: inline-block; background: rgba(56, 189, 248, 0.1); color: #38bdf8; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 16px; border: 1px solid rgba(56, 189, 248, 0.3);">
+    <div style="background:linear-gradient(145deg, #1e293b, #0f172a); width:90%; max-width:440px; border-radius:20px; padding:30px 24px; border:1px solid rgba(56, 189, 248, 0.25); box-shadow: 0 20px 45px rgba(0,0,0,0.7); text-align:center;">
+        <div style="display: inline-block; background: rgba(56, 189, 248, 0.1); color: #38bdf8; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; margin-bottom: 16px; border: 1px solid rgba(56, 189, 248, 0.3);">
             Campus Print
         </div>
-
-        <div id="customAlertIcon" style="font-size: 3rem; margin-bottom: 14px; filter: drop-shadow(0 4px 10px rgba(56, 189, 248, 0.3));">⚠️</div>
-        
+        <div id="customAlertIcon" style="font-size: 3rem; margin-bottom: 14px;">⚠️</div>
         <h3 id="customAlertTitle" style="margin: 0 0 10px 0; color: #f8fafc; font-size: 1.35rem; font-weight: 700;">Alert Title</h3>
         <p id="customAlertMessage" style="color: #94a3b8; font-size: 0.95rem; line-height: 1.6; margin-bottom: 26px;">Detailed message goes here...</p>
-        
-        <button onclick="closeCustomAlert()" style="background: linear-gradient(135deg, #38bdf8, #0284c7); color: #0f172a; border: none; padding: 12px 24px; cursor: pointer; border-radius: 10px; font-weight: 700; font-size: 1rem; width: 100%; box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4); transition: all 0.2s;">Got It, Thanks</button>
+        <button onclick="closeCustomAlert()" style="background: linear-gradient(135deg, #38bdf8, #0284c7); color: #0f172a; border: none; padding: 12px 24px; cursor: pointer; border-radius: 10px; font-weight: 700; font-size: 1rem; width: 100%;">Got It, Thanks</button>
     </div>
 </div>
 
 <!-- Modal Container for Preview -->
 <div id="pdfModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.88); z-index:9999; justify-content:center; align-items:center; backdrop-filter: blur(5px);">
-    <div style="background:#1e293b; width:95%; max-width:900px; height:88vh; border-radius:12px; display:flex; flex-direction:column; padding:18px; border:1px solid #334155; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
-        
+    <div style="background:#1e293b; width:95%; max-width:900px; height:88vh; border-radius:12px; display:flex; flex-direction:column; padding:18px; border:1px solid #334155;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom: 1px solid #334155; padding-bottom: 10px;">
             <div>
                 <h3 id="modalFileName" style="margin:0; color:#f8fafc; font-size: 1.1rem;">📄 Document Preview</h3>
@@ -190,59 +185,20 @@
             </div>
             <button onclick="closePreviewModal()" style="background:#ef4444; color:#fff; border:none; padding:6px 14px; cursor:pointer; border-radius:6px; font-weight:600;">Close ✖</button>
         </div>
-
-        <div id="pdfCanvasContainer" style="flex:1; overflow-y:auto; background:#0f172a; padding:15px; border-radius:8px; display:flex; flex-direction:column; align-items:center; gap:20px;">
-        </div>
+        <div id="pdfCanvasContainer" style="flex:1; overflow-y:auto; background:#0f172a; padding:15px; border-radius:8px; display:flex; flex-direction:column; align-items:center; gap:20px;"></div>
     </div>
 </div>
 
 <style>
 .hero-image-container { display: flex; justify-content: center; margin-bottom: 18px; }
 .hero-svg { width: 150px; height: 90px; filter: drop-shadow(0 8px 16px rgba(56, 189, 248, 0.25)); }
-
-/* Modern Drag & Drop Box */
-.drop-zone {
-    border: 2px dashed rgba(56, 189, 248, 0.4);
-    background: rgba(15, 23, 42, 0.6);
-    padding: 32px 20px;
-    border-radius: 16px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-.drop-zone:hover {
-    border-color: #38bdf8;
-    background: rgba(56, 189, 248, 0.05);
-    box-shadow: 0 8px 25px rgba(56, 189, 248, 0.15);
-    transform: translateY(-2px);
-}
-.drop-zone-icon {
-    font-size: 2.5rem;
-    margin-bottom: 10px;
-}
-.drop-zone-title {
-    color: #f8fafc;
-    font-size: 1rem;
-    font-weight: 600;
-    margin-bottom: 6px;
-}
-.drop-zone-desc {
-    color: #64748b;
-    font-size: 0.85rem;
-}
-
-#pdfCanvasContainer canvas, #pdfCanvasContainer img {
-    background: #ffffff;
-    border-radius: 4px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    max-width: 100%;
-}
+.drop-zone { border: 2px dashed rgba(56, 189, 248, 0.4); background: rgba(15, 23, 42, 0.6); padding: 32px 20px; border-radius: 16px; text-align: center; cursor: pointer; transition: all 0.3s ease; }
+.drop-zone:hover { border-color: #38bdf8; background: rgba(56, 189, 248, 0.05); }
+.drop-zone-icon { font-size: 2.5rem; margin-bottom: 10px; }
+.drop-zone-title { color: #f8fafc; font-size: 1rem; font-weight: 600; margin-bottom: 6px; }
+.drop-zone-desc { color: #64748b; font-size: 0.85rem; }
+#pdfCanvasContainer canvas, #pdfCanvasContainer img { background: #ffffff; border-radius: 4px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); max-width: 100%; }
 .bw-filter { filter: grayscale(100%) contrast(120%) !important; }
-
-@keyframes scaleIn {
-    from { transform: scale(0.85); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
-}
 </style>
 
 <script>
@@ -294,7 +250,6 @@
         }
         const pages = new Set();
         const parts = rangeStr.split(',');
-
         parts.forEach(part => {
             if (part.includes('-')) {
                 const [start, end] = part.split('-').map(Number);
@@ -314,7 +269,6 @@
     async function renderPagesWithSettings() {
         const container = document.getElementById('pdfCanvasContainer');
         container.innerHTML = '';
-
         const colorMode = document.getElementById('color-mode').value;
         const orientation = document.getElementById('orientation').value;
 
@@ -332,18 +286,15 @@
         }
 
         if (!currentPdfDoc) return;
-        
         const pageRangeStr = document.getElementById('page-range').value;
         const allowedPages = Array.from(getParsedPageSet(pageRangeStr, currentPdfDoc.numPages));
 
-        document.getElementById('modalSubTitle').innerText = 
-            `Color: ${colorMode.toUpperCase()} | Orientation: ${orientation.toUpperCase()}`;
+        document.getElementById('modalSubTitle').innerText = `Color: ${colorMode.toUpperCase()} | Orientation: ${orientation.toUpperCase()}`;
 
         for (let i = 0; i < allowedPages.length; i++) {
             const pageNum = allowedPages[i];
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-
             if (colorMode === 'bw') canvas.classList.add('bw-filter');
 
             const page = await currentPdfDoc.getPage(pageNum);
@@ -357,7 +308,6 @@
             canvas.width = viewport.width;
             canvas.height = viewport.height;
             await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-
             container.appendChild(canvas);
         }
     }
@@ -532,7 +482,7 @@
     async function sendToPrinter() {
         setStep(5);
         document.getElementById('loading-spinner').style.display = "block";
-        document.getElementById('status-text').innerText = "Printing process active. Secure queue handling your job...";
+        document.getElementById('status-text').innerText = "Queuing print job to server...";
         
         const files = document.getElementById('file-input').files;
         const formData = new FormData();
@@ -554,7 +504,7 @@
             const data = await res.json();
             document.getElementById('loading-spinner').style.display = "none";
             if (res.ok) {
-                document.getElementById('status-text').innerText = "Payment successful & Print job queued!";
+                document.getElementById('status-text').innerText = "Payment successful & Print job successfully queued!";
             } else {
                 document.getElementById('status-text').innerText = "Printing error: " + (data.error || "Unknown error");
             }
