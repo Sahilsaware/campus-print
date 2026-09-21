@@ -91,8 +91,9 @@
 
             <div class="form-group">
                 <label>Paper Size</label>
-                <select id="paper-size">
+                <select id="paper-size" onchange="updateLivePreviewIfOpen();">
                     <option value="A4">A4 Size</option>
+                    <option value="A3">A3 Size</option>
                 </select>
             </div>
 
@@ -100,6 +101,7 @@
                 <label>Orientation</label>
                 <select id="orientation" onchange="updateLivePreviewIfOpen();">
                     <option value="portrait">Portrait</option>
+                    <option value="landscape">Landscape</option>
                 </select>
             </div>
 
@@ -196,7 +198,7 @@
 .drop-zone-icon { font-size: 2.5rem; margin-bottom: 10px; }
 .drop-zone-title { color: #f8fafc; font-size: 1rem; font-weight: 600; margin-bottom: 6px; }
 .drop-zone-desc { color: #64748b; font-size: 0.85rem; }
-#pdfCanvasContainer canvas, #pdfCanvasContainer img { background: #ffffff; border-radius: 4px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); max-width: 100%; }
+#pdfCanvasContainer canvas, #pdfCanvasContainer img { background: #ffffff; border-radius: 4px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); max-width: 100%; transition: transform 0.3s ease; }
 .bw-filter { filter: grayscale(100%) contrast(120%) !important; }
 </style>
 
@@ -270,15 +272,20 @@
         container.innerHTML = '';
         const colorMode = document.getElementById('color-mode').value;
         const orientation = document.getElementById('orientation').value;
+        const paperSize = document.getElementById('paper-size').value;
+
+        document.getElementById('modalSubTitle').innerText = `Size: ${paperSize} | Color: ${colorMode.toUpperCase()} | Orientation: ${orientation.toUpperCase()}`;
 
         if (currentImageSrc) {
-            document.getElementById('modalSubTitle').innerText = `Color: ${colorMode.toUpperCase()} | Orientation: ${orientation.toUpperCase()}`;
             const img = document.createElement('img');
             img.src = currentImageSrc;
             if (colorMode === 'bw') img.classList.add('bw-filter');
             if (orientation === 'landscape') {
                 img.style.transform = 'rotate(90deg)';
                 img.style.margin = '40px 0';
+            } else {
+                img.style.transform = 'none';
+                img.style.margin = '0';
             }
             container.appendChild(img);
             return;
@@ -287,8 +294,6 @@
         if (!currentPdfDoc) return;
         const pageRangeStr = document.getElementById('page-range').value;
         const allowedPages = Array.from(getParsedPageSet(pageRangeStr, currentPdfDoc.numPages));
-
-        document.getElementById('modalSubTitle').innerText = `Color: ${colorMode.toUpperCase()} | Orientation: ${orientation.toUpperCase()}`;
 
         for (let i = 0; i < allowedPages.length; i++) {
             const pageNum = allowedPages[i];
@@ -302,6 +307,8 @@
 
             if (orientation === 'landscape' && viewport.width < viewport.height) {
                 viewport = page.getViewport({ scale: scale, rotation: 90 });
+            } else if (orientation === 'portrait' && viewport.width > viewport.height) {
+                viewport = page.getViewport({ scale: scale, rotation: 0 });
             }
 
             canvas.width = viewport.width;
@@ -328,7 +335,7 @@
         const ext = file.name.split('.').pop().toLowerCase();
 
         if (['doc', 'docx', 'ppt', 'pptx'].includes(ext)) {
-            showCustomAlert("Direct Print Notice", "Visual preview is available for PDF and Image files. Word/PPT documents will be printed directly with your settings.", "ℹ️");
+            showCustomAlert("Converted File Notice", "Word/PPT files are converted to printable format. Live visual preview is optimized for PDF and Image files.", "ℹ️");
             return;
         }
 
