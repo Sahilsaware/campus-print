@@ -26,6 +26,12 @@ SUPER_ADMIN_PASS = "CampusPrint@2026#Secure"
 last_heartbeat_time = 0
 PI_PRINTER_ONLINE = False
 
+# Global variable to track live printer state (paper status, pause state, etc.)
+printer_status_global = {
+    "status": "ready",
+    "message": "Printer is ready"
+}
+
 def load_history():
     if os.path.exists(HISTORY_FILE):
         try:
@@ -99,7 +105,7 @@ def admin_panel():
         return redirect(url_for('admin_login'))
     history = load_history()
     pending_jobs = load_pending_jobs()
-    return render_template('admin.html', pending_jobs=pending_jobs, history=history, username=session.get('username'))
+    return render_template('admin.html', pending_jobs=pending_jobs, history=history, username=session.get('username'), printer_status=printer_status_global)
 
 @app.route('/count-multiple-pages', methods=['POST'])
 def count_multiple_pages():
@@ -204,9 +210,9 @@ def print_multiple():
                                 if shape.has_text_frame:
                                     for paragraph in shape.text_frame.paragraphs:
                                         if paragraph.text.strip():
-                                          story.append(Paragraph(paragraph.text, styles['Normal']))
-                                          story.append(Spacer(1, 10))
-                                          
+                                            story.append(Paragraph(paragraph.text, styles['Normal']))
+                                            story.append(Spacer(1, 10))
+                                     
                         pdf_doc.build(story)
                         if os.path.exists(converted_pdf_path):
                             print_path = converted_pdf_path
@@ -278,12 +284,29 @@ def update_status():
 
 @app.route('/printer-status', methods=['GET'])
 def printer_status():
-    global last_heartbeat_time, PI_PRINTER_ONLINE
+    global last_heartbeat_time, PI_PRINTER_ONLINE, printer_status_global
     
     if time.time() - last_heartbeat_time > 15:
         PI_PRINTER_ONLINE = False
         
-    return jsonify({'online': PI_PRINTER_ONLINE})
+    # Combine online status and printer paper/hardware status
+    response_data = {
+        "online": PI_PRINTER_ONLINE,
+        "status": printer_status_global.get("status", "ready"),
+        "message": printer_status_global.get("message", "Printer is ready")
+    }
+    return jsonify(response_data)
+
+# New endpoint for Pi to update printer paper / hardware status
+@app.route('/update-printer-status', methods=['POST'])
+def update_printer_status():
+    global printer_status_global
+    data = request.get_json(silent=True) or {}
+    if data:
+        printer_status_global["status"] = data.get("status", "ready")
+        printer_status_global["message"] = data.get("message", "Printer is ready")
+        return jsonify({"success": True})
+    return jsonify({"success": False, "error": "Invalid data"}), 400
 
 @app.route('/complete-job/<job_id>', methods=['POST'])
 def complete_job(job_id):
