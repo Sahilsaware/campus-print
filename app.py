@@ -141,6 +141,79 @@ def count_multiple_pages():
                 
     return jsonify({'success': True, 'total_pages': total_pages})
 
+@app.route('/preview-convert', methods=['POST'])
+def preview_convert():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'Empty filename'}), 400
+    
+    ext = os.path.splitext(file.filename)[1].lower()
+    job_id = str(uuid.uuid4())
+    local_path = os.path.join(UPLOAD_FOLDER, f"{job_id}{ext}")
+    file.save(local_path)
+    
+    print_path = local_path
+    target_pagesize = get_page_dimensions('A4', 'portrait')
+    
+    if ext in ['.docx', '.doc']:
+        try:
+            import docx
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+            from reportlab.lib.styles import getSampleStyleSheet
+            
+            doc = docx.Document(local_path)
+            converted_pdf_path = os.path.join(UPLOAD_FOLDER, f"{job_id}.pdf")
+            pdf_doc = SimpleDocTemplate(converted_pdf_path, pagesize=target_pagesize)
+            styles = getSampleStyleSheet()
+            story = []
+            for element in doc.element.body:
+                if element.tag.endswith('p'):
+                    para = docx.text.paragraph.Paragraph(element, doc)
+                    if para.text.strip():
+                        story.append(Paragraph(para.text, styles['Normal']))
+                        story.append(Spacer(1, 8))
+            pdf_doc.build(story)
+            if os.path.exists(converted_pdf_path):
+                print_path = converted_pdf_path
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    elif ext == '.pptx':
+        try:
+            from pptx import Presentation
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+            from reportlab.lib.styles import getSampleStyleSheet
+            
+            prs = Presentation(local_path)
+            converted_pdf_path = os.path.join(UPLOAD_FOLDER, f"{job_id}.pdf")
+            pdf_doc = SimpleDocTemplate(converted_pdf_path, pagesize=target_pagesize)
+            styles = getSampleStyleSheet()
+            story = []
+            for slide_idx, slide in enumerate(prs.slides):
+                story.append(Paragraph(f"<b>--- Slide {slide_idx + 1} ---</b>", styles['Heading2']))
+                story.append(Spacer(1, 6))
+                for shape in slide.shapes:
+                    if shape.has_text_frame:
+                        for paragraph in shape.text_frame.paragraphs:
+                            if paragraph.text.strip():
+                                story.append(Paragraph(paragraph.text, styles['Normal']))
+                                story.append(Spacer(1, 6))
+                story.append(Spacer(1, 12))
+            pdf_doc.build(story)
+            if os.path.exists(converted_pdf_path):
+                print_path = converted_pdf_path
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    if print_path.endswith('.pdf') and os.path.exists(print_path):
+        with open(print_path, 'rb') as pf:
+            b64_data = base64.b64encode(pf.read()).decode('utf-8')
+        return jsonify({'pdf_base64': b64_data})
+    
+    return jsonify({'error': 'Conversion failed'}), 500
+
 @app.route('/print-multiple', methods=['POST'])
 def print_multiple():
     if 'files' not in request.files:
@@ -245,7 +318,7 @@ def print_multiple():
                                             story.append(Paragraph(paragraph.text, styles['Normal']))
                                             story.append(Spacer(1, 6))
                             story.append(Spacer(1, 12))
-                           
+                            
                         pdf_doc.build(story)
                         if os.path.exists(converted_pdf_path):
                             print_path = converted_pdf_path
