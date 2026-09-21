@@ -4,3 +4,6 @@ pypdf
 flask-sock
 gunicorn
 requests
+python-docx
+python-pptx
+reportlab
