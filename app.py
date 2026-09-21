@@ -3,7 +3,6 @@ import json
 import uuid
 import time
 import base64
-import subprocess
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from flask_cors import CORS
 from pypdf import PdfReader
@@ -156,15 +155,63 @@ def print_multiple():
                     f.write(file_bytes)
 
                 print_path = local_path
-                if ext in ['.docx', '.doc', '.pptx']:
+                
+                # Pure Python Word to PDF conversion
+                if ext in ['.docx', '.doc']:
                     try:
-                        subprocess.run(['libreoffice', '--headless', '--convert-to', 'pdf', local_path, '--outdir', UPLOAD_FOLDER], check=True)
+                        import docx
+                        from reportlab.lib.pagesizes import letter
+                        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+                        from reportlab.lib.styles import getSampleStyleSheet
+                        
+                        doc = docx.Document(local_path)
                         pdf_filename = f"{job_id}.pdf"
                         converted_pdf_path = os.path.join(UPLOAD_FOLDER, pdf_filename)
+                        
+                        pdf_doc = SimpleDocTemplate(converted_pdf_path, pagesize=letter)
+                        styles = getSampleStyleSheet()
+                        story = []
+                        
+                        for para in doc.paragraphs:
+                            if para.text.strip():
+                                story.append(Paragraph(para.text, styles['Normal']))
+                                story.append(Spacer(1, 10))
+                                
+                        pdf_doc.build(story)
                         if os.path.exists(converted_pdf_path):
                             print_path = converted_pdf_path
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        print(f"Word conversion error: {e}")
+
+                # Pure Python PPT to PDF conversion
+                elif ext == '.pptx':
+                    try:
+                        from pptx import Presentation
+                        from reportlab.lib.pagesizes import letter
+                        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+                        from reportlab.lib.styles import getSampleStyleSheet
+                        
+                        prs = Presentation(local_path)
+                        pdf_filename = f"{job_id}.pdf"
+                        converted_pdf_path = os.path.join(UPLOAD_FOLDER, pdf_filename)
+                        
+                        pdf_doc = SimpleDocTemplate(converted_pdf_path, pagesize=letter)
+                        styles = getSampleStyleSheet()
+                        story = []
+                        
+                        for slide in prs.slides:
+                            for shape in slide.shapes:
+                                if shape.has_text_frame:
+                                    for paragraph in shape.text_frame.paragraphs:
+                                        if paragraph.text.strip():
+                                          story.append(Paragraph(paragraph.text, styles['Normal']))
+                                          story.append(Spacer(1, 10))
+                                          
+                        pdf_doc.build(story)
+                        if os.path.exists(converted_pdf_path):
+                            print_path = converted_pdf_path
+                    except Exception as e:
+                        print(f"PPT conversion error: {e}")
 
                 pages = 1
                 if print_path.endswith('.pdf'):
