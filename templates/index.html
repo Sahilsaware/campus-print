@@ -334,11 +334,6 @@
         const file = files[0];
         const ext = file.name.split('.').pop().toLowerCase();
 
-        if (['doc', 'docx', 'ppt', 'pptx'].includes(ext)) {
-            showCustomAlert("Converted File Notice", "Word/PPT files are converted to printable format. Live visual preview is optimized for PDF and Image files.", "ℹ️");
-            return;
-        }
-
         const modal = document.getElementById('pdfModal');
         const container = document.getElementById('pdfCanvasContainer');
         document.getElementById('modalFileName').innerText = "📄 " + file.name;
@@ -355,7 +350,8 @@
                 renderPagesWithSettings();
             };
             reader.readAsDataURL(file);
-        } else if (ext === 'pdf') {
+        } else {
+            // Har file type ko PDFJS se parse karne ki koshish karega (agar PDF hai) ya fallback dega
             const fileReader = new FileReader();
             fileReader.onload = function() {
                 const typedarray = new Uint8Array(this.result);
@@ -363,7 +359,7 @@
                     currentPdfDoc = pdf;
                     renderPagesWithSettings();
                 }).catch(err => {
-                    container.innerHTML = '<p style="color:#ef4444;">Failed to load PDF preview.</p>';
+                    container.innerHTML = '<p style="color:#ef4444;">Preview available for PDF and image formats directly.</p>';
                 });
             };
             fileReader.readAsArrayBuffer(file);
