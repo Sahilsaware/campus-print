@@ -4,4 +4,3 @@ pypdf
 flask-sock
 gunicorn
 requests
-libreoffice
