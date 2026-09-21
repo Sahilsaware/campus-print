@@ -3,6 +3,7 @@ import json
 import uuid
 import time
 import base64
+import subprocess
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from flask_cors import CORS
 from pypdf import PdfReader
@@ -71,16 +72,24 @@ def save_admins(admins):
     with open(ADMINS_FILE, 'w') as f:
         json.dump(admins, f, indent=4)
 
-def get_page_dimensions(paper_size, orientation):
-    # Dimensions in points (1 inch = 72 points)
-    sizes = {
-        'A4': (595.27, 841.89),
-        'A3': (841.89, 1190.55)
-    }
-    width, height = sizes.get(paper_size.upper(), sizes['A4'])
-    if orientation.lower() == 'landscape':
-        return (height, width)
-    return (width, height)
+def convert_to_pdf_with_libreoffice(input_path, output_dir):
+    """
+    Yeh function LibreOffice ke through Word/PPT ko exact layout ke sath PDF me convert karta hai.
+    """
+    try:
+        subprocess.run(
+            ['libreoffice', '--headless', '--convert-to', 'pdf', input_path, '--outdir', output_dir],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        base_name = os.path.splitext(os.path.basename(input_path))[0]
+        pdf_path = os.path.join(output_dir, f"{base_name}.pdf")
+        if os.path.exists(pdf_path):
+            return pdf_path
+    except Exception as e:
+        print(f"LibreOffice conversion error: {e}")
+    return None
 
 @app.route('/')
 def home():
@@ -155,57 +164,13 @@ def preview_convert():
     file.save(local_path)
     
     print_path = local_path
-    target_pagesize = get_page_dimensions('A4', 'portrait')
     
-    if ext in ['.docx', '.doc']:
-        try:
-            import docx
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-            from reportlab.lib.styles import getSampleStyleSheet
-            
-            doc = docx.Document(local_path)
-            converted_pdf_path = os.path.join(UPLOAD_FOLDER, f"{job_id}.pdf")
-            pdf_doc = SimpleDocTemplate(converted_pdf_path, pagesize=target_pagesize)
-            styles = getSampleStyleSheet()
-            story = []
-            for element in doc.element.body:
-                if element.tag.endswith('p'):
-                    para = docx.text.paragraph.Paragraph(element, doc)
-                    if para.text.strip():
-                        story.append(Paragraph(para.text, styles['Normal']))
-                        story.append(Spacer(1, 8))
-            pdf_doc.build(story)
-            if os.path.exists(converted_pdf_path):
-                print_path = converted_pdf_path
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-
-    elif ext == '.pptx':
-        try:
-            from pptx import Presentation
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-            from reportlab.lib.styles import getSampleStyleSheet
-            
-            prs = Presentation(local_path)
-            converted_pdf_path = os.path.join(UPLOAD_FOLDER, f"{job_id}.pdf")
-            pdf_doc = SimpleDocTemplate(converted_pdf_path, pagesize=target_pagesize)
-            styles = getSampleStyleSheet()
-            story = []
-            for slide_idx, slide in enumerate(prs.slides):
-                story.append(Paragraph(f"<b>--- Slide {slide_idx + 1} ---</b>", styles['Heading2']))
-                story.append(Spacer(1, 6))
-                for shape in slide.shapes:
-                    if shape.has_text_frame:
-                        for paragraph in shape.text_frame.paragraphs:
-                            if paragraph.text.strip():
-                                story.append(Paragraph(paragraph.text, styles['Normal']))
-                                story.append(Spacer(1, 6))
-                story.append(Spacer(1, 12))
-            pdf_doc.build(story)
-            if os.path.exists(converted_pdf_path):
-                print_path = converted_pdf_path
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
+    if ext in ['.docx', '.doc', '.pptx']:
+        converted_pdf = convert_to_pdf_with_libreoffice(local_path, UPLOAD_FOLDER)
+        if converted_pdf and os.path.exists(converted_pdf):
+            final_pdf = os.path.join(UPLOAD_FOLDER, f"{job_id}.pdf")
+            os.replace(converted_pdf, final_pdf)
+            print_path = final_pdf
 
     if print_path.endswith('.pdf') and os.path.exists(print_path):
         with open(print_path, 'rb') as pf:
@@ -231,7 +196,6 @@ def print_multiple():
     files = request.files.getlist('files')
 
     pending_jobs = load_pending_jobs()
-    target_pagesize = get_page_dimensions(paper_size, orientation)
 
     for file in files:
         if file.filename != '':
@@ -247,83 +211,12 @@ def print_multiple():
 
                 print_path = local_path
                 
-                # Word to PDF conversion
-                if ext in ['.docx', '.doc']:
-                    try:
-                        import docx
-                        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-                        from reportlab.lib.styles import getSampleStyleSheet
-                        from reportlab.lib import colors
-                        
-                        doc = docx.Document(local_path)
-                        pdf_filename = f"{job_id}.pdf"
-                        converted_pdf_path = os.path.join(UPLOAD_FOLDER, pdf_filename)
-                        
-                        pdf_doc = SimpleDocTemplate(converted_pdf_path, pagesize=target_pagesize)
-                        styles = getSampleStyleSheet()
-                        story = []
-                        
-                        for element in doc.element.body:
-                            if element.tag.endswith('p'):
-                                para = docx.text.paragraph.Paragraph(element, doc)
-                                if para.text.strip():
-                                    story.append(Paragraph(para.text, styles['Normal']))
-                                    story.append(Spacer(1, 8))
-                            elif element.tag.endswith('tbl'):
-                                table = docx.table.Table(element, doc)
-                                table_data = []
-                                for row in table.rows:
-                                    row_data = [Paragraph(cell.text.strip(), styles['Normal']) for cell in row.cells]
-                                    table_data.append(row_data)
-                                if table_data:
-                                    t = Table(table_data)
-                                    t.setStyle(TableStyle([
-                                        ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
-                                        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
-                                        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-                                        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.grey),
-                                        ('BOX', (0,0), (-1,-1), 1, colors.black),
-                                    ]))
-                                    story.append(t)
-                                    story.append(Spacer(1, 10))
-                                    
-                        pdf_doc.build(story)
-                        if os.path.exists(converted_pdf_path):
-                            print_path = converted_pdf_path
-                    except Exception as e:
-                        print(f"Word conversion error: {e}")
-
-                # PPT to PDF conversion
-                elif ext == '.pptx':
-                    try:
-                        from pptx import Presentation
-                        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-                        from reportlab.lib.styles import getSampleStyleSheet
-                        
-                        prs = Presentation(local_path)
-                        pdf_filename = f"{job_id}.pdf"
-                        converted_pdf_path = os.path.join(UPLOAD_FOLDER, pdf_filename)
-                        
-                        pdf_doc = SimpleDocTemplate(converted_pdf_path, pagesize=target_pagesize)
-                        styles = getSampleStyleSheet()
-                        story = []
-                        
-                        for slide_idx, slide in enumerate(prs.slides):
-                            story.append(Paragraph(f"<b>--- Slide {slide_idx + 1} ---</b>", styles['Heading2']))
-                            story.append(Spacer(1, 6))
-                            for shape in slide.shapes:
-                                if shape.has_text_frame:
-                                    for paragraph in shape.text_frame.paragraphs:
-                                        if paragraph.text.strip():
-                                            story.append(Paragraph(paragraph.text, styles['Normal']))
-                                            story.append(Spacer(1, 6))
-                            story.append(Spacer(1, 12))
-                            
-                        pdf_doc.build(story)
-                        if os.path.exists(converted_pdf_path):
-                            print_path = converted_pdf_path
-                    except Exception as e:
-                        print(f"PPT conversion error: {e}")
+                if ext in ['.docx', '.doc', '.pptx']:
+                    converted_pdf = convert_to_pdf_with_libreoffice(local_path, UPLOAD_FOLDER)
+                    if converted_pdf and os.path.exists(converted_pdf):
+                        final_pdf = os.path.join(UPLOAD_FOLDER, f"{job_id}.pdf")
+                        os.replace(converted_pdf, final_pdf)
+                        print_path = final_pdf
 
                 pages = 1
                 if print_path.endswith('.pdf'):
