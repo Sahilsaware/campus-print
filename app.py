@@ -73,8 +73,6 @@ def save_admins(admins):
 
 def get_page_dimensions(paper_size, orientation):
     # Dimensions in points (1 inch = 72 points)
-    # A4: 8.27 x 11.69 inches -> 595.27 x 841.89 points
-    # A3: 11.69 x 16.54 inches -> 841.89 x 1190.55 points
     sizes = {
         'A4': (595.27, 841.89),
         'A3': (841.89, 1190.55)
@@ -176,7 +174,7 @@ def print_multiple():
 
                 print_path = local_path
                 
-                # Enhanced Pure Python Word to PDF conversion with table support & correct dimensions
+                # Word to PDF conversion
                 if ext in ['.docx', '.doc']:
                     try:
                         import docx
@@ -192,7 +190,6 @@ def print_multiple():
                         styles = getSampleStyleSheet()
                         story = []
                         
-                        # Extract paragraphs and tables sequentially in order
                         for element in doc.element.body:
                             if element.tag.endswith('p'):
                                 para = docx.text.paragraph.Paragraph(element, doc)
@@ -223,7 +220,7 @@ def print_multiple():
                     except Exception as e:
                         print(f"Word conversion error: {e}")
 
-                # Pure Python PPT to PDF conversion with correct dimensions
+                # PPT to PDF conversion
                 elif ext == '.pptx':
                     try:
                         from pptx import Presentation
@@ -248,7 +245,7 @@ def print_multiple():
                                             story.append(Paragraph(paragraph.text, styles['Normal']))
                                             story.append(Spacer(1, 6))
                             story.append(Spacer(1, 12))
-                             
+                           
                         pdf_doc.build(story)
                         if os.path.exists(converted_pdf_path):
                             print_path = converted_pdf_path
@@ -334,11 +331,18 @@ def printer_status():
 
 @app.route('/update-printer-status', methods=['POST'])
 def update_printer_status():
-    global printer_status_global
+    global PI_PRINTER_ONLINE, printer_status_global, last_heartbeat_time
+    last_heartbeat_time = time.time()
     data = request.get_json(silent=True) or {}
+    
     if data:
-        printer_status_global["status"] = data.get("status", "ready")
-        printer_status_global["message"] = data.get("message", "Printer is ready")
+        if 'printer_online' in data:
+            PI_PRINTER_ONLINE = bool(data.get('printer_online'))
+        
+        status_text = data.get("status_message") or data.get("message", "Printer is ready")
+        printer_status_global["status"] = "ready" if PI_PRINTER_ONLINE else "offline"
+        printer_status_global["message"] = status_text
+        
         return jsonify({"success": True})
     return jsonify({"success": False, "error": "Invalid data"}), 400
 
