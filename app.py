@@ -3,10 +3,12 @@ import json
 import uuid
 import time
 import base64
-import subprocess
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from flask_cors import CORS
-from pypdf import PdfReader
+from pypdf import PdfReader, PdfWriter, PageObject
+from reportlab.lib.pagesizes import A4, landscape, portrait
+from reportlab.pdfgen import canvas
+from io import BytesIO
 from flask_sock import Sock
 
 app = Flask(__name__)
@@ -27,7 +29,6 @@ SUPER_ADMIN_PASS = "CampusPrint@2026#Secure"
 last_heartbeat_time = 0
 PI_PRINTER_ONLINE = False
 
-# Global variable to track live printer state (paper status, pause state, etc.)
 printer_status_global = {
     "status": "ready",
     "message": "Printer is ready"
@@ -72,24 +73,30 @@ def save_admins(admins):
     with open(ADMINS_FILE, 'w') as f:
         json.dump(admins, f, indent=4)
 
-def convert_to_pdf_with_libreoffice(input_path, output_dir):
+def apply_orientation_to_pdf(input_pdf_path, output_pdf_path, orientation):
     """
-    Yeh function LibreOffice ke through Word/PPT ko exact layout ke sath PDF me convert karta hai.
+    Agar user ne landscape select kiya hai, toh PDF ke pages ko landscape mode me rotate/adjust kar deta hai.
     """
     try:
-        subprocess.run(
-            ['libreoffice', '--headless', '--convert-to', 'pdf', input_path, '--outdir', output_dir],
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-        base_name = os.path.splitext(os.path.basename(input_path))[0]
-        pdf_path = os.path.join(output_dir, f"{base_name}.pdf")
-        if os.path.exists(pdf_path):
-            return pdf_path
+        reader = PdfReader(input_pdf_path)
+        writer = PdfWriter()
+
+        for page in reader.pages:
+            if orientation == 'landscape':
+                # Agar portrait me hai aur landscape chahiye, toh width/height check karke rotate kar sakte hain
+                # Ya phir mediaBox ko swap kar sakte hain
+                current_width = float(page.mediabox.width)
+                current_height = float(page.mediabox.height)
+                if current_width < current_height:
+                    page.rotate(90)
+            writer.add_page(page)
+
+        with open(output_pdf_path, 'wb') as f:
+            writer.write(f)
+        return output_pdf_path
     except Exception as e:
-        print(f"LibreOffice conversion error: {e}")
-    return None
+        print(f"Orientation error: {e}")
+        return input_pdf_path
 
 @app.route('/')
 def home():
@@ -139,7 +146,6 @@ def count_multiple_pages():
             ext = os.path.splitext(file.filename)[1].lower()
             if ext == '.pdf':
                 try:
-                    from io import BytesIO
                     file_bytes = file.read()
                     reader = PdfReader(BytesIO(file_bytes))
                     total_pages += len(reader.pages)
@@ -155,6 +161,7 @@ def preview_convert():
     if 'file' not in request.files:
         return jsonify({'error': 'No file uploaded'}), 400
     file = request.files['file']
+    orientation = request.form.get('orientation', 'portrait')
     if file.filename == '':
         return jsonify({'error': 'Empty filename'}), 400
     
@@ -165,12 +172,10 @@ def preview_convert():
     
     print_path = local_path
     
-    if ext in ['.docx', '.doc', '.pptx']:
-        converted_pdf = convert_to_pdf_with_libreoffice(local_path, UPLOAD_FOLDER)
-        if converted_pdf and os.path.exists(converted_pdf):
-            final_pdf = os.path.join(UPLOAD_FOLDER, f"{job_id}.pdf")
-            os.replace(converted_pdf, final_pdf)
-            print_path = final_pdf
+    # Agar PDF hai aur landscape manga hai toh orientation adjust karo
+    if ext == '.pdf':
+        oriented_pdf = os.path.join(UPLOAD_FOLDER, f"{job_id}_oriented.pdf")
+        print_path = apply_orientation_to_pdf(local_path, oriented_pdf, orientation)
 
     if print_path.endswith('.pdf') and os.path.exists(print_path):
         with open(print_path, 'rb') as pf:
@@ -211,12 +216,9 @@ def print_multiple():
 
                 print_path = local_path
                 
-                if ext in ['.docx', '.doc', '.pptx']:
-                    converted_pdf = convert_to_pdf_with_libreoffice(local_path, UPLOAD_FOLDER)
-                    if converted_pdf and os.path.exists(converted_pdf):
-                        final_pdf = os.path.join(UPLOAD_FOLDER, f"{job_id}.pdf")
-                        os.replace(converted_pdf, final_pdf)
-                        print_path = final_pdf
+                if ext == '.pdf':
+                    oriented_pdf = os.path.join(UPLOAD_FOLDER, f"{job_id}_oriented.pdf")
+                    print_path = apply_orientation_to_pdf(local_path, oriented_pdf, orientation)
 
                 pages = 1
                 if print_path.endswith('.pdf'):
