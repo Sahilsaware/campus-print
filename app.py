@@ -193,7 +193,8 @@ def print_multiple():
                     'page_range': page_range,
                     'pages_per_sheet': pages_per_sheet,
                     'total_price': total_price,
-                    'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
+                    'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'status': 'pending'
                 }
 
                 pending_jobs.append(job_data)
@@ -212,7 +213,13 @@ def get_pending_jobs():
             PI_PRINTER_ONLINE = bool(data['printer_online'])
     
     pending_jobs = load_pending_jobs()
-    return jsonify({'jobs': pending_jobs})
+    unlocked_jobs = [j for j in pending_jobs if j.get('status', 'pending') == 'pending']
+    
+    for j in unlocked_jobs:
+        j['status'] = 'processing'
+    save_pending_jobs(pending_jobs)
+    
+    return jsonify({'jobs': unlocked_jobs})
 
 @app.route('/update-status', methods=['POST'])
 def update_status():
@@ -243,6 +250,15 @@ def complete_job(job_id):
         save_history(history)
         return jsonify({'success': True})
     return jsonify({'error': 'Job not found'}), 404
+
+@app.route('/fail-job/<job_id>', methods=['POST'])
+def fail_job(job_id):
+    pending_jobs = load_pending_jobs()
+    for j in pending_jobs:
+        if j['id'] == job_id:
+            j['status'] = 'failed'
+    save_pending_jobs(pending_jobs)
+    return jsonify({'success': True})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
