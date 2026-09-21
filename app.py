@@ -71,6 +71,19 @@ def save_admins(admins):
     with open(ADMINS_FILE, 'w') as f:
         json.dump(admins, f, indent=4)
 
+def get_page_dimensions(paper_size, orientation):
+    # Dimensions in points (1 inch = 72 points)
+    # A4: 8.27 x 11.69 inches -> 595.27 x 841.89 points
+    # A3: 11.69 x 16.54 inches -> 841.89 x 1190.55 points
+    sizes = {
+        'A4': (595.27, 841.89),
+        'A3': (841.89, 1190.55)
+    }
+    width, height = sizes.get(paper_size.upper(), sizes['A4'])
+    if orientation.lower() == 'landscape':
+        return (height, width)
+    return (width, height)
+
 @app.route('/')
 def home():
     return render_template('index.html')
@@ -147,6 +160,7 @@ def print_multiple():
     files = request.files.getlist('files')
 
     pending_jobs = load_pending_jobs()
+    target_pagesize = get_page_dimensions(paper_size, orientation)
 
     for file in files:
         if file.filename != '':
@@ -162,38 +176,57 @@ def print_multiple():
 
                 print_path = local_path
                 
-                # Pure Python Word to PDF conversion
+                # Enhanced Pure Python Word to PDF conversion with table support & correct dimensions
                 if ext in ['.docx', '.doc']:
                     try:
                         import docx
-                        from reportlab.lib.pagesizes import letter
-                        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+                        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
                         from reportlab.lib.styles import getSampleStyleSheet
+                        from reportlab.lib import colors
                         
                         doc = docx.Document(local_path)
                         pdf_filename = f"{job_id}.pdf"
                         converted_pdf_path = os.path.join(UPLOAD_FOLDER, pdf_filename)
                         
-                        pdf_doc = SimpleDocTemplate(converted_pdf_path, pagesize=letter)
+                        pdf_doc = SimpleDocTemplate(converted_pdf_path, pagesize=target_pagesize)
                         styles = getSampleStyleSheet()
                         story = []
                         
-                        for para in doc.paragraphs:
-                            if para.text.strip():
-                                story.append(Paragraph(para.text, styles['Normal']))
-                                story.append(Spacer(1, 10))
-                                
+                        # Extract paragraphs and tables sequentially in order
+                        for element in doc.element.body:
+                            if element.tag.endswith('p'):
+                                para = docx.text.paragraph.Paragraph(element, doc)
+                                if para.text.strip():
+                                    story.append(Paragraph(para.text, styles['Normal']))
+                                    story.append(Spacer(1, 8))
+                            elif element.tag.endswith('tbl'):
+                                table = docx.table.Table(element, doc)
+                                table_data = []
+                                for row in table.rows:
+                                    row_data = [Paragraph(cell.text.strip(), styles['Normal']) for cell in row.cells]
+                                    table_data.append(row_data)
+                                if table_data:
+                                    t = Table(table_data)
+                                    t.setStyle(TableStyle([
+                                        ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+                                        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+                                        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+                                        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.grey),
+                                        ('BOX', (0,0), (-1,-1), 1, colors.black),
+                                    ]))
+                                    story.append(t)
+                                    story.append(Spacer(1, 10))
+                                    
                         pdf_doc.build(story)
                         if os.path.exists(converted_pdf_path):
                             print_path = converted_pdf_path
                     except Exception as e:
                         print(f"Word conversion error: {e}")
 
-                # Pure Python PPT to PDF conversion
+                # Pure Python PPT to PDF conversion with correct dimensions
                 elif ext == '.pptx':
                     try:
                         from pptx import Presentation
-                        from reportlab.lib.pagesizes import letter
                         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
                         from reportlab.lib.styles import getSampleStyleSheet
                         
@@ -201,18 +234,21 @@ def print_multiple():
                         pdf_filename = f"{job_id}.pdf"
                         converted_pdf_path = os.path.join(UPLOAD_FOLDER, pdf_filename)
                         
-                        pdf_doc = SimpleDocTemplate(converted_pdf_path, pagesize=letter)
+                        pdf_doc = SimpleDocTemplate(converted_pdf_path, pagesize=target_pagesize)
                         styles = getSampleStyleSheet()
                         story = []
                         
-                        for slide in prs.slides:
+                        for slide_idx, slide in enumerate(prs.slides):
+                            story.append(Paragraph(f"<b>--- Slide {slide_idx + 1} ---</b>", styles['Heading2']))
+                            story.append(Spacer(1, 6))
                             for shape in slide.shapes:
                                 if shape.has_text_frame:
                                     for paragraph in shape.text_frame.paragraphs:
                                         if paragraph.text.strip():
                                             story.append(Paragraph(paragraph.text, styles['Normal']))
-                                            story.append(Spacer(1, 10))
-                                     
+                                            story.append(Spacer(1, 6))
+                            story.append(Spacer(1, 12))
+                             
                         pdf_doc.build(story)
                         if os.path.exists(converted_pdf_path):
                             print_path = converted_pdf_path
@@ -289,7 +325,6 @@ def printer_status():
     if time.time() - last_heartbeat_time > 15:
         PI_PRINTER_ONLINE = False
         
-    # Combine online status and printer paper/hardware status
     response_data = {
         "online": PI_PRINTER_ONLINE,
         "status": printer_status_global.get("status", "ready"),
@@ -297,7 +332,6 @@ def printer_status():
     }
     return jsonify(response_data)
 
-# New endpoint for Pi to update printer paper / hardware status
 @app.route('/update-printer-status', methods=['POST'])
 def update_printer_status():
     global printer_status_global
