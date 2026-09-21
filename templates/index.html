@@ -325,7 +325,7 @@
         }
     }
 
-    function triggerDocumentPreview() {
+    async function triggerDocumentPreview() {
         const files = document.getElementById('file-input').files;
         if (files.length === 0) {
             showCustomAlert("No File Found", "Please select a document file before trying to preview layout.", "🔍");
@@ -337,7 +337,7 @@
         const modal = document.getElementById('pdfModal');
         const container = document.getElementById('pdfCanvasContainer');
         document.getElementById('modalFileName').innerText = "📄 " + file.name;
-        container.innerHTML = '<p style="color:#94a3b8;">Rendering live layout preview...</p>';
+        container.innerHTML = '<p style="color:#94a3b8;">Converting & rendering live layout preview...</p>';
         modal.style.display = 'flex';
 
         currentPdfDoc = null;
@@ -350,8 +350,7 @@
                 renderPagesWithSettings();
             };
             reader.readAsDataURL(file);
-        } else {
-            // Har file type ko PDFJS se parse karne ki koshish karega (agar PDF hai) ya fallback dega
+        } else if (ext === 'pdf') {
             const fileReader = new FileReader();
             fileReader.onload = function() {
                 const typedarray = new Uint8Array(this.result);
@@ -359,10 +358,29 @@
                     currentPdfDoc = pdf;
                     renderPagesWithSettings();
                 }).catch(err => {
-                    container.innerHTML = '<p style="color:#ef4444;">Preview available for PDF and image formats directly.</p>';
+                    container.innerHTML = '<p style="color:#ef4444;">Could not load PDF preview.</p>';
                 });
             };
             fileReader.readAsArrayBuffer(file);
+        } else {
+            // Word / PPT preview conversion via backend
+            const formData = new FormData();
+            formData.append('file', file);
+            try {
+                const res = await fetch('/preview-convert', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (res.ok && data.pdf_base64) {
+                    const pdfBytes = Uint8Array.from(atob(data.pdf_base64), c => c.charCodeAt(0));
+                    pdfjsLib.getDocument(pdfBytes).promise.then(pdf => {
+                        currentPdfDoc = pdf;
+                        renderPagesWithSettings();
+                    });
+                } else {
+                    container.innerHTML = '<p style="color:#ef4444;">' + (data.error || 'Preview conversion failed.') + '</p>';
+                }
+            } catch (e) {
+                container.innerHTML = '<p style="color:#ef4444;">Error connecting to server for preview conversion.</p>';
+            }
         }
     }
 
