@@ -5,9 +5,7 @@ import time
 import base64
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from flask_cors import CORS
-from pypdf import PdfReader, PdfWriter, PageObject
-from reportlab.lib.pagesizes import A4, landscape, portrait
-from reportlab.pdfgen import canvas
+import fitz  # PyMuPDF for perfect page scaling, fitting and rotation
 from io import BytesIO
 from flask_sock import Sock
 from PIL import Image
@@ -76,58 +74,56 @@ def save_admins(admins):
 
 def process_print_file(input_path, output_path, ext, paper_size='A4', orientation='portrait'):
     """
-    Handles both images and PDFs, fitting them properly onto A4/A3 with physical orientation changes 
-    so printers print them correctly without cutting or wrong alignment.
+    Handles both images and PDFs using PyMuPDF (fitz), scaling and centering them 
+    perfectly onto target paper size/orientation without any cutting or distortion.
     """
     try:
         ext = ext.lower()
-        if ext in ['.jpg', '.jpeg', '.png']:
-            if paper_size.upper() == 'A3':
-                width, height = 842, 1191
-            else:
-                width, height = 595, 842
-                
-            if orientation.lower() == 'landscape':
-                width, height = height, width
-
-            dpi = 300
-            px_width = int((width / 72) * dpi)
-            px_height = int((height / 72) * dpi)
-
-            img = Image.open(input_path)
-            img.thumbnail((px_width - 150, px_height - 150))
+        if paper_size.upper() == 'A3':
+            width, height = 842, 1191
+        else:
+            width, height = 595, 842
             
-            background = Image.new("RGB", (px_width, px_height), (255, 255, 255))
-            pos = ((px_width - img.width) // 2, (px_height - img.height) // 2)
-            background.paste(img, pos)
-            background.save(output_path, "PDF", resolution=dpi)
-            return output_path
+        if orientation.lower() == 'landscape':
+            width, height = height, width  # Swap for landscape
+
+        output_doc = fitz.open()
+
+        if ext in ['.jpg', '.jpeg', '.png']:
+            img_doc = fitz.open(input_path)
+            pdf_bytes = img_doc.convert_to_pdf()
+            img_pdf = fitz.open("pdf", pdf_bytes)
+            
+            page = output_doc.new_page(width=width, height=height)
+            rect = img_pdf[0].rect
+            
+            # Uniform scale & center
+            zoom = min(width / rect.width, height / rect.height)
+            h_margin = (width - rect.width * zoom) / 2
+            v_margin = (height - rect.height * zoom) / 2
+            dest_rect = fitz.Rect(h_margin, v_margin, width - h_margin, height - v_margin)
+            
+            page.show_pdf_page(dest_rect, img_pdf, 0)
 
         elif ext == '.pdf':
-            reader = PdfReader(input_path)
-            writer = PdfWriter()
-
-            for page in reader.pages:
-                p_width = float(page.mediabox.width)
-                p_height = float(page.mediabox.height)
-                is_page_landscape = p_width > p_height
-                target_is_landscape = (orientation.lower() == 'landscape')
-
-                # Physically rotate and swap dimensions so printer gets absolute landscape/portrait
-                if target_is_landscape and not is_page_landscape:
-                    page.rotate(90)
-                    page.mediabox.upper_right = (p_height, p_width)
-                elif not target_is_landscape and is_page_landscape:
-                    page.rotate(270)
-                    page.mediabox.upper_right = (p_height, p_width)
+            input_doc = fitz.open(input_path)
+            for src_page in input_doc:
+                page = output_doc.new_page(width=width, height=height)
+                rect = src_page.rect
                 
-                writer.add_page(page)
-
-            with open(output_path, 'wb') as f:
-                writer.write(f)
-            return output_path
+                # Scale portrait/landscape content perfectly to fit the target page layout without cutting
+                zoom = min(width / rect.width, height / rect.height)
+                h_margin = (width - rect.width * zoom) / 2
+                v_margin = (height - rect.height * zoom) / 2
+                dest_rect = fitz.Rect(h_margin, v_margin, width - h_margin, height - v_margin)
+                
+                page.show_pdf_page(dest_rect, input_doc, src_page.number)
         else:
             return input_path
+
+        output_doc.save(output_path)
+        output_doc.close()
+        return output_path
     except Exception as e:
         print(f"File processing error: {e}")
         return input_path
@@ -181,8 +177,8 @@ def count_multiple_pages():
             if ext == '.pdf':
                 try:
                     file_bytes = file.read()
-                    reader = PdfReader(BytesIO(file_bytes))
-                    total_pages += len(reader.pages)
+                    reader = fitz.open(stream=file_bytes, filetype="pdf")
+                    total_pages += len(reader)
                 except Exception:
                     total_pages += 1
             else:
@@ -251,8 +247,8 @@ def print_multiple():
                 pages = 1
                 if print_path.endswith('.pdf'):
                     try:
-                        reader = PdfReader(print_path)
-                        pages = len(reader.pages)
+                        doc = fitz.open(print_path)
+                        pages = len(doc)
                     except Exception:
                         pass
                 
@@ -366,4 +362,4 @@ def fail_job(job_id):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(0.0.0.0, port=port)
