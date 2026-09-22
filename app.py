@@ -10,6 +10,7 @@ from reportlab.lib.pagesizes import A4, landscape, portrait
 from reportlab.pdfgen import canvas
 from io import BytesIO
 from flask_sock import Sock
+from PIL import Image
 
 app = Flask(__name__)
 CORS(app)
@@ -73,30 +74,61 @@ def save_admins(admins):
     with open(ADMINS_FILE, 'w') as f:
         json.dump(admins, f, indent=4)
 
-def apply_orientation_to_pdf(input_pdf_path, output_pdf_path, orientation):
+def process_print_file(input_path, output_path, ext, paper_size='A4', orientation='portrait'):
     """
-    Agar user ne landscape select kiya hai, toh PDF ke pages ko landscape mode me rotate/adjust kar deta hai.
+    Handles both images and PDFs, fitting them properly onto A4/A3 with the correct orientation 
+    to prevent misaligned or crooked prints.
     """
     try:
-        reader = PdfReader(input_pdf_path)
-        writer = PdfWriter()
+        ext = ext.lower()
+        if ext in ['.jpg', '.jpeg', '.png']:
+            # A4 & A3 dimensions in points
+            if paper_size.upper() == 'A3':
+                width, height = 842, 1191
+            else:
+                width, height = 595, 842
+                
+            if orientation.lower() == 'landscape':
+                width, height = height, width
 
-        for page in reader.pages:
-            if orientation == 'landscape':
-                # Agar portrait me hai aur landscape chahiye, toh width/height check karke rotate kar sakte hain
-                # Ya phir mediaBox ko swap kar sakte hain
-                current_width = float(page.mediabox.width)
-                current_height = float(page.mediabox.height)
-                if current_width < current_height:
+            dpi = 300
+            px_width = int((width / 72) * dpi)
+            px_height = int((height / 72) * dpi)
+
+            img = Image.open(input_path)
+            img.thumbnail((px_width - 150, px_height - 150))
+            
+            background = Image.new("RGB", (px_width, px_height), (255, 255, 255))
+            pos = ((px_width - img.width) // 2, (px_height - img.height) // 2)
+            background.paste(img, pos)
+            background.save(output_path, "PDF", resolution=dpi)
+            return output_path
+
+        elif ext == '.pdf':
+            reader = PdfReader(input_path)
+            writer = PdfWriter()
+
+            for page in reader.pages:
+                p_width = float(page.mediabox.width)
+                p_height = float(page.mediabox.height)
+                is_page_landscape = p_width > p_height
+                target_is_landscape = (orientation.lower() == 'landscape')
+
+                if target_is_landscape and not is_page_landscape:
                     page.rotate(90)
-            writer.add_page(page)
+                elif not target_is_landscape and is_page_landscape:
+                    page.rotate(270)
+                
+                writer.add_page(page)
 
-        with open(output_pdf_path, 'wb') as f:
-            writer.write(f)
-        return output_pdf_path
+            with open(output_path, 'wb') as f:
+                writer.write(f)
+            return output_path
+        else:
+            return input_path
     except Exception as e:
-        print(f"Orientation error: {e}")
-        return input_pdf_path
+        print(f"File processing error: {e}")
+        return input_path
 
 @app.route('/')
 def home():
@@ -162,6 +194,7 @@ def preview_convert():
         return jsonify({'error': 'No file uploaded'}), 400
     file = request.files['file']
     orientation = request.form.get('orientation', 'portrait')
+    paper_size = request.form.get('paper_size', 'A4')
     if file.filename == '':
         return jsonify({'error': 'Empty filename'}), 400
     
@@ -170,14 +203,10 @@ def preview_convert():
     local_path = os.path.join(UPLOAD_FOLDER, f"{job_id}{ext}")
     file.save(local_path)
     
-    print_path = local_path
-    
-    # Agar PDF hai aur landscape manga hai toh orientation adjust karo
-    if ext == '.pdf':
-        oriented_pdf = os.path.join(UPLOAD_FOLDER, f"{job_id}_oriented.pdf")
-        print_path = apply_orientation_to_pdf(local_path, oriented_pdf, orientation)
+    processed_pdf = os.path.join(UPLOAD_FOLDER, f"{job_id}_processed.pdf")
+    print_path = process_print_file(local_path, processed_pdf, ext, paper_size, orientation)
 
-    if print_path.endswith('.pdf') and os.path.exists(print_path):
+    if print_path and os.path.exists(print_path):
         with open(print_path, 'rb') as pf:
             b64_data = base64.b64encode(pf.read()).decode('utf-8')
         return jsonify({'pdf_base64': b64_data})
@@ -205,7 +234,7 @@ def print_multiple():
     for file in files:
         if file.filename != '':
             ext = os.path.splitext(file.filename)[1].lower()
-            if ext in ['.pdf', '.png', '.jpg', '.jpeg', '.docx', '.pptx', '.doc']:
+            if ext in ['.pdf', '.png', '.jpg', '.jpeg']:
                 job_id = str(uuid.uuid4())
                 file_bytes = file.read()
                 
@@ -214,11 +243,8 @@ def print_multiple():
                 with open(local_path, 'wb') as f:
                     f.write(file_bytes)
 
-                print_path = local_path
-                
-                if ext == '.pdf':
-                    oriented_pdf = os.path.join(UPLOAD_FOLDER, f"{job_id}_oriented.pdf")
-                    print_path = apply_orientation_to_pdf(local_path, oriented_pdf, orientation)
+                processed_pdf = os.path.join(UPLOAD_FOLDER, f"{job_id}_processed.pdf")
+                print_path = process_print_file(local_path, processed_pdf, ext, paper_size, orientation)
 
                 pages = 1
                 if print_path.endswith('.pdf'):
@@ -291,10 +317,12 @@ def printer_status():
         PI_PRINTER_ONLINE = False
         
     response_data = {
-        "online": PI_PRINTER_ONLINE,
+        "online": PI_PRENT_ONLINE if 'PI_PRENT_ONLINE' in globals() else PI_PRINTER_ONLINE,
         "status": printer_status_global.get("status", "ready"),
         "message": printer_status_global.get("message", "Printer is ready")
     }
+    # Clean standard response:
+    response_data["online"] = PI_PRINTER_ONLINE
     return jsonify(response_data)
 
 @app.route('/update-printer-status', methods=['POST'])
@@ -339,3 +367,4 @@ def fail_job(job_id):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+            
