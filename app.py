@@ -74,8 +74,7 @@ def save_admins(admins):
 
 def process_print_file(input_path, output_path, ext, paper_size='A4', orientation='portrait'):
     """
-    Properly handles orientation conversion. If a portrait document is printed in 
-    landscape, it rotates and scales it so text reads correctly and fills the page.
+    Clean and precise orientation handler using PyMuPDF built-in rotation and full-page rect mapping.
     """
     try:
         ext = ext.lower()
@@ -99,19 +98,13 @@ def process_print_file(input_path, output_path, ext, paper_size='A4', orientatio
             page = output_doc.new_page(width=target_width, height=target_height)
             rect = img_pdf[0].rect
             
+            rot = 0
             if orientation.lower() == 'landscape' and rect.width < rect.height:
-                page.set_rotation(90)
-                zoom = min(target_width / rect.height, target_height / rect.width)
-                h_margin = (target_height - rect.width * zoom) / 2
-                v_margin = (target_width - rect.height * zoom) / 2
-                dest_rect = fitz.Rect(0, 0, target_height, target_width)
-            else:
-                zoom = min(target_width / rect.width, target_height / rect.height)
-                h_margin = (target_width - rect.width * zoom) / 2
-                v_margin = (target_height - rect.height * zoom) / 2
-                dest_rect = fitz.Rect(h_margin, v_margin, target_width - h_margin, target_height - v_margin)
-            
-            page.show_pdf_page(dest_rect, img_pdf, 0)
+                rot = 90
+            elif orientation.lower() == 'portrait' and rect.width > rect.height:
+                rot = 90
+                
+            page.show_pdf_page(page.rect, img_pdf, 0, rotate=rot)
 
         elif ext == '.pdf':
             input_doc = fitz.open(input_path)
@@ -119,21 +112,13 @@ def process_print_file(input_path, output_path, ext, paper_size='A4', orientatio
                 page = output_doc.new_page(width=target_width, height=target_height)
                 p_rect = src_page.rect
                 
+                rot = 0
                 if orientation.lower() == 'landscape' and p_rect.width < p_rect.height:
-                    page.set_rotation(90)
-                    zoom = min(target_width / p_rect.height, target_height / p_rect.width)
-                    w_scaled = p_rect.height * zoom
-                    h_scaled = p_rect.width * zoom
-                    h_margin = (target_width - w_scaled) / 2
-                    v_margin = (target_height - h_scaled) / 2
-                    
-                    page.show_pdf_page(page.rect, input_doc, src_page.number, clip=p_rect, rotate=90)
-                else:
-                    zoom = min(target_width / p_rect.width, target_height / p_rect.height)
-                    h_margin = (target_width - p_rect.width * zoom) / 2
-                    v_margin = (target_height - p_rect.height * zoom) / 2
-                    dest_rect = fitz.Rect(h_margin, v_margin, target_width - h_margin, target_height - v_margin)
-                    page.show_pdf_page(dest_rect, input_doc, src_page.number)
+                    rot = 90
+                elif orientation.lower() == 'portrait' and p_rect.width > p_rect.height:
+                    rot = 90
+                
+                page.show_pdf_page(page.rect, input_doc, src_page.number, rotate=rot)
         else:
             return input_path
 
