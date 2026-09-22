@@ -76,8 +76,8 @@ def save_admins(admins):
 
 def process_print_file(input_path, output_path, ext, paper_size='A4', orientation='portrait'):
     """
-    Handles both images and PDFs, fitting them properly onto A4/A3 with the correct orientation 
-    to prevent misaligned or crooked prints.
+    Handles both images and PDFs, fitting them properly onto A4/A3 with physical orientation changes 
+    so printers print them correctly without cutting or wrong alignment.
     """
     try:
         ext = ext.lower()
@@ -113,10 +113,13 @@ def process_print_file(input_path, output_path, ext, paper_size='A4', orientatio
                 is_page_landscape = p_width > p_height
                 target_is_landscape = (orientation.lower() == 'landscape')
 
+                # Physically rotate and swap dimensions so printer gets absolute landscape/portrait
                 if target_is_landscape and not is_page_landscape:
                     page.rotate(90)
+                    page.mediabox.upper_right = (p_height, p_width)
                 elif not target_is_landscape and is_page_landscape:
                     page.rotate(270)
+                    page.mediabox.upper_right = (p_height, p_width)
                 
                 writer.add_page(page)
 
