@@ -74,18 +74,20 @@ def save_admins(admins):
 
 def process_print_file(input_path, output_path, ext, paper_size='A4', orientation='portrait'):
     """
-    Handles both images and PDFs using PyMuPDF (fitz), scaling and centering them 
-    perfectly onto target paper size/orientation without any cutting or distortion.
+    Handles both images and PDFs using PyMuPDF (fitz), automatically correcting 
+    page orientation and fitting documents properly without cutting or distortion.
     """
     try:
         ext = ext.lower()
         if paper_size.upper() == 'A3':
-            width, height = 842, 1191
+            base_w, base_h = 842, 1191
         else:
-            width, height = 595, 842
+            base_w, base_h = 595, 842
             
         if orientation.lower() == 'landscape':
-            width, height = height, width  # Swap for landscape
+            target_width, target_height = base_h, base_w
+        else:
+            target_width, target_height = base_w, base_h
 
         output_doc = fitz.open()
 
@@ -94,28 +96,26 @@ def process_print_file(input_path, output_path, ext, paper_size='A4', orientatio
             pdf_bytes = img_doc.convert_to_pdf()
             img_pdf = fitz.open("pdf", pdf_bytes)
             
-            page = output_doc.new_page(width=width, height=height)
+            page = output_doc.new_page(width=target_width, height=target_height)
             rect = img_pdf[0].rect
             
-            # Uniform scale & center
-            zoom = min(width / rect.width, height / rect.height)
-            h_margin = (width - rect.width * zoom) / 2
-            v_margin = (height - rect.height * zoom) / 2
-            dest_rect = fitz.Rect(h_margin, v_margin, width - h_margin, height - v_margin)
+            zoom = min(target_width / rect.width, target_height / rect.height)
+            h_margin = (target_width - rect.width * zoom) / 2
+            v_margin = (target_height - rect.height * zoom) / 2
+            dest_rect = fitz.Rect(h_margin, v_margin, target_width - h_margin, target_height - v_margin)
             
             page.show_pdf_page(dest_rect, img_pdf, 0)
 
         elif ext == '.pdf':
             input_doc = fitz.open(input_path)
             for src_page in input_doc:
-                page = output_doc.new_page(width=width, height=height)
-                rect = src_page.rect
+                page = output_doc.new_page(width=target_width, height=target_height)
+                p_rect = src_page.rect
                 
-                # Scale portrait/landscape content perfectly to fit the target page layout without cutting
-                zoom = min(width / rect.width, height / rect.height)
-                h_margin = (width - rect.width * zoom) / 2
-                v_margin = (height - rect.height * zoom) / 2
-                dest_rect = fitz.Rect(h_margin, v_margin, width - h_margin, height - v_margin)
+                zoom = min(target_width / p_rect.width, target_height / p_rect.height)
+                h_margin = (target_width - p_rect.width * zoom) / 2
+                v_margin = (target_height - p_rect.height * zoom) / 2
+                dest_rect = fitz.Rect(h_margin, v_margin, target_width - h_margin, target_height - v_margin)
                 
                 page.show_pdf_page(dest_rect, input_doc, src_page.number)
         else:
