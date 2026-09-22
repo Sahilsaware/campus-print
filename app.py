@@ -82,7 +82,6 @@ def process_print_file(input_path, output_path, ext, paper_size='A4', orientatio
     try:
         ext = ext.lower()
         if ext in ['.jpg', '.jpeg', '.png']:
-            # A4 & A3 dimensions in points
             if paper_size.upper() == 'A3':
                 width, height = 842, 1191
             else:
@@ -317,12 +316,10 @@ def printer_status():
         PI_PRINTER_ONLINE = False
         
     response_data = {
-        "online": PI_PRENT_ONLINE if 'PI_PRENT_ONLINE' in globals() else PI_PRINTER_ONLINE,
+        "online": PI_PRINTER_ONLINE,
         "status": printer_status_global.get("status", "ready"),
         "message": printer_status_global.get("message", "Printer is ready")
     }
-    # Clean standard response:
-    response_data["online"] = PI_PRINTER_ONLINE
     return jsonify(response_data)
 
 @app.route('/update-printer-status', methods=['POST'])
@@ -342,7 +339,7 @@ def update_printer_status():
         return jsonify({"success": True})
     return jsonify({"success": False, "error": "Invalid data"}), 400
 
-@app.route('/complete-job/<job_id>', methods=['POST'])
+@app.route('/complete-job/', methods=['POST'])
 def complete_job(job_id):
     pending_jobs = load_pending_jobs()
     job = next((j for j in pending_jobs if j['id'] == job_id), None)
@@ -355,7 +352,7 @@ def complete_job(job_id):
         return jsonify({'success': True})
     return jsonify({'error': 'Job not found'}), 404
 
-@app.route('/fail-job/<job_id>', methods=['POST'])
+@app.route('/fail-job/', methods=['POST'])
 def fail_job(job_id):
     pending_jobs = load_pending_jobs()
     for j in pending_jobs:
@@ -367,4 +364,3 @@ def fail_job(job_id):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-            
