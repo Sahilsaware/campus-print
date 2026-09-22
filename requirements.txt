@@ -1,6 +1,7 @@
 flask
 flask-cors
 pypdf
+PyMuPDF
 flask-sock
 gunicorn
 requests
