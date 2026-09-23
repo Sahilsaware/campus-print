@@ -274,19 +274,28 @@
         const orientation = document.getElementById('orientation').value;
         const paperSize = document.getElementById('paper-size').value;
 
-        document.getElementById('modalSubTitle').innerText = `Size: ${paperSize} | Color: ${colorMode.toUpperCase()} | Orientation: ${orientation.toUpperCase()}`;
+        document.getElementById('modalSubTitle').innerText = `Size: \({paperSize} | Color:\){colorMode.toUpperCase()} | Orientation: ${orientation.toUpperCase()}`;
 
         if (currentImageSrc) {
             const img = document.createElement('img');
             img.src = currentImageSrc;
             if (colorMode === 'bw') img.classList.add('bw-filter');
-            if (orientation === 'landscape') {
-                img.style.transform = 'rotate(90deg)';
-                img.style.margin = '40px 0';
-            } else {
-                img.style.transform = 'none';
-                img.style.margin = '0';
-            }
+            
+            img.onload = function() {
+                if (orientation === 'landscape' && img.naturalWidth < img.naturalHeight) {
+                    img.style.transform = 'rotate(90deg)';
+                    img.style.margin = '40px 0';
+                } else if (orientation === 'portrait' && img.naturalWidth > img.naturalHeight) {
+                    img.style.transform = 'rotate(90deg)';
+                    img.style.margin = '40px 0';
+                } else {
+                    img.style.transform = 'none';
+                    img.style.margin = '0';
+                }
+            };
+            // Fallback if already loaded
+            if (img.complete) img.onload();
+
             container.appendChild(img);
             return;
         }
@@ -303,13 +312,20 @@
 
             const page = await currentPdfDoc.getPage(pageNum);
             let scale = 1.0;
-            let viewport = page.getViewport({ scale: scale });
+            let baseVp = page.getViewport({ scale: scale });
+            let rotation = page.rotate || 0;
 
-            if (orientation === 'landscape' && viewport.width < viewport.height) {
-                viewport = page.getViewport({ scale: scale, rotation: 90 });
-            } else if (orientation === 'portrait' && viewport.width > viewport.height) {
-                viewport = page.getViewport({ scale: scale, rotation: 0 });
+            if (orientation === 'landscape') {
+                if (baseVp.width < baseVp.height) {
+                    rotation = (rotation + 90) % 360;
+                }
+            } else if (orientation === 'portrait') {
+                if (baseVp.width > baseVp.height) {
+                    rotation = (rotation + 90) % 360;
+                }
             }
+
+            let viewport = page.getViewport({ scale: scale, rotation: rotation });
 
             canvas.width = viewport.width;
             canvas.height = viewport.height;
@@ -317,14 +333,7 @@
             container.appendChild(canvas);
         }
     }
-
-    function updateLivePreviewIfOpen() {
-        const modal = document.getElementById('pdfModal');
-        if (modal.style.display === 'flex') {
-            renderPagesWithSettings();
-        }
-    }
-
+    
     async function triggerDocumentPreview() {
         const files = document.getElementById('file-input').files;
         if (files.length === 0) {
