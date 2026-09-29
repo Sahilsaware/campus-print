@@ -1,126 +1,63 @@
 import os
-import uuid
-import time
-from flask import Flask, request, jsonify, render_template, send_from_directory
+import fitz  # PyMuPDF
+from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
-from pypdf import PdfReader
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 CORS(app)
 
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# In-memory print queue and heartbeat tracker
-PRINT_JOBS = []
-LAST_PRINTER_HEARTBEAT = 0  # Timestamp in seconds
+ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx', 'ppt', 'pptx'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def convert_to_pdf(input_path, file_extension):
+    if file_extension in ['doc', 'docx', 'ppt', 'pptx']:
+        output_dir = app.config['UPLOAD_FOLDER']
+        # LibreOffice headless command to convert docs to PDF
+        os.system(f'libreoffice --headless --convert-to pdf "{input_path}" --outdir "{output_dir}"')
+        base_name = os.path.splitext(os.path.basename(input_path))[0]
+        return os.path.join(output_dir, f"{base_name}.pdf")
+    return input_path
 
 @app.route('/')
-def home():
+def index():
     return render_template('index.html')
 
-# 1. Page Count Endpoint
-@app.route('/count-multiple-pages', methods=['POST'])
-def count_multiple_pages():
-    if 'files' not in request.files:
-        return jsonify({'error': 'No files uploaded'}), 400
-
-    files = request.files.getlist('files')
-    total_pages = 0
-
-    for file in files:
-        if file.filename != '':
-            ext = os.path.splitext(file.filename)[1].lower()
-            if ext == '.pdf':
-                try:
-                    reader = PdfReader(file)
-                    total_pages += len(reader.pages)
-                except Exception as e:
-                    return jsonify({'error': f'Error reading PDF {file.filename}: {str(e)}'}), 400
-            elif ext in ['.png', '.jpg', '.jpeg', '.docx', '.pptx', '.doc']:
-                total_pages += 1
-            else:
-                return jsonify({'error': f'Unsupported file format: {file.filename}'}), 400
-
-    return jsonify({'total_pages': total_pages})
-
-# 2. Printer Status / Heartbeat Check Endpoint
-@app.route('/printer-status', methods=['GET'])
-def printer_status():
-    global LAST_PRINTER_HEARTBEAT
-    current_time = time.time()
-    # If last poll was within 15 seconds, consider printer ONLINE
-    is_online = (current_time - LAST_PRINTER_HEARTBEAT) <= 15
-    return jsonify({'online': is_online, 'last_seen': int(current_time - LAST_PRINTER_HEARTBEAT)})
-
-# 3. Direct Print Endpoint
-@app.route('/print-multiple', methods=['POST'])
-def print_multiple():
-    if 'files' not in request.files:
-        return jsonify({'error': 'No files uploaded'}), 400
-
-    # Naya Update: Website se bheji gayi saari settings read ho rahi hain
-    copies = int(request.form.get('copies', 1))
-    orientation = request.form.get('orientation', 'portrait')
-    color_mode = request.form.get('color_mode', 'bw')
-    paper_size = request.form.get('paper_size', 'A4')
-    duplex = request.form.get('duplex', 'false').lower() == 'true'
-    page_range = request.form.get('page_range', '')
-    pages_per_sheet = int(request.form.get('pages_per_sheet', 1))
-
-    files = request.files.getlist('files')
-
-    for file in files:
-        if file.filename != '':
-            ext = os.path.splitext(file.filename)[1].lower()
-            if ext in ['.pdf', '.png', '.jpg', '.jpeg', '.docx', '.pptx', '.doc']:
-                job_id = str(uuid.uuid4())
-                filename = f"{job_id}_{file.filename}"
-                filepath = os.path.join(UPLOAD_FOLDER, filename)
-                file.save(filepath)
-
-                # Queue me ab saare parameters store ho rahe hain
-                PRINT_JOBS.append({
-                    'id': job_id,
-                    'filename': filename,
-                    'copies': copies,
-                    'orientation': orientation,
-                    'color_mode': color_mode,
-                    'paper_size': paper_size,
-                    'duplex': duplex,
-                    'page_range': page_range,
-                    'pages_per_sheet': pages_per_sheet
-                })
-            else:
-                return jsonify({'error': f'Unsupported file format: {file.filename}'}), 400
-
-    return jsonify({'success': True, 'message': 'Print job queued successfully!'})
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
     
-# 4. Local Script Polling Endpoint (Updates Heartbeat)
-@app.route('/get-pending-jobs', methods=['GET'])
-def get_pending_jobs():
-    global LAST_PRINTER_HEARTBEAT
-    LAST_PRINTER_HEARTBEAT = time.time()
-    return jsonify({'jobs': PRINT_JOBS})
-
-# 5. Download File Endpoint for Local PC
-@app.route('/uploads/<filename>', methods=['GET'])
-def download_file(filename):
-    return send_from_directory(UPLOAD_FOLDER, filename)
-
-# 6. Job Complete & Cleanup Endpoint
-@app.route('/complete-job/<job_id>', methods=['POST'])
-def complete_job(job_id):
-    global PRINT_JOBS
-    job = next((j for j in PRINT_JOBS if j['id'] == job_id), None)
-    if job:
-        filepath = os.path.join(UPLOAD_FOLDER, job['filename'])
-        if os.path.exists(filepath):
-            os.remove(filepath)
-        PRINT_JOBS = [j for j in PRINT_JOBS if j['id'] != job_id]
-        return jsonify({'success': True})
-    return jsonify({'error': 'Job not found'}), 404
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
+        
+        ext = filename.rsplit('.', 1)[1].lower()
+        pdf_path = convert_to_pdf(file_path, ext)
+        
+        # Count pages using PyMuPDF (fitz)
+        doc = fitz.open(pdf_path)
+        total_pages = len(doc)
+        doc.close()
+        
+        return jsonify({
+            'success': True,
+            'filename': filename,
+            'total_pages': total_pages,
+            'pdf_path': pdf_path
+        })
+    
+    return jsonify({'error': 'Invalid file format'}), 400
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=5000, debug=True)
